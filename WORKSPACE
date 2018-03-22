@@ -89,3 +89,9 @@ new_http_archive(
         "http://download.tensorflow.org/models/speech_commands_v0.01.zip",
     ],
 )
+
+new_local_repository(
+    name = "orc",
+    path = "/Users/chentianyou/dev/orc_lib",
+    build_file = "//third_party/orc:orc.BUILD"
+)

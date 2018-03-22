@@ -108,6 +108,8 @@ class LibHDFS {
 // in the libhdfs documentation.
 #if defined(PLATFORM_WINDOWS)
     const char* kLibHdfsDso = "hdfs.dll";
+#elif defined(PLATFORM_POSIX)
+    const char* kLibHdfsDso = "libhdfs.dylib";
 #else
     const char* kLibHdfsDso = "libhdfs.so";
 #endif

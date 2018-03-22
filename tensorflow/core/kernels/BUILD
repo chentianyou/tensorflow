@@ -2235,6 +2235,7 @@ cc_library(
         ":text_line_reader_op",
         ":tf_record_reader_op",
         ":whole_file_read_ops",
+        ":orc_file_read_op",
     ],
 )
 
@@ -2326,6 +2327,12 @@ tf_kernel_library(
     name = "whole_file_read_ops",
     prefix = "whole_file_read_ops",
     deps = IO_DEPS,
+)
+
+tf_kernel_library(
+    name = "orc_file_read_op",
+    prefix = "orc_file_read_op",
+    deps = IO_DEPS + ["@orc//:orc"],
 )
 
 tf_cc_tests(
@@ -4982,6 +4989,7 @@ filegroup(
             "remote_fused_graph_rewriter_transform.*",
             "fixed_length_record_reader_op.*",
             "whole_file_read_ops.*",
+            "orc_file_read_op.*",
             "sample_distorted_bounding_box_op.*",
             "ctc_loss_op.*",
             "summary_interface.*",
