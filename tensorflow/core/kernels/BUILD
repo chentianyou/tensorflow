@@ -2332,7 +2332,7 @@ tf_kernel_library(
 tf_kernel_library(
     name = "orc_file_read_op",
     prefix = "orc_file_read_op",
-    deps = IO_DEPS + ["@orc//:orc"],
+    deps = IO_DEPS + ["//third_party/orc:orc"],
 )
 
 tf_cc_tests(
@@ -3554,6 +3554,7 @@ cc_library(
     deps = [
         ":decode_compressed_op",
         ":decode_csv_op",
+        ":decode_orc_op",
         ":decode_raw_op",
         ":example_parsing_ops",
         ":parse_tensor_op",
@@ -3573,6 +3574,12 @@ tf_kernel_library(
     name = "decode_csv_op",
     prefix = "decode_csv_op",
     deps = PARSING_DEPS,
+)
+
+tf_kernel_library(
+    name = "decode_orc_op",
+    prefix = "decode_orc_op",
+    deps = PARSING_DEPS + ["//third_party/orc:orc"],
 )
 
 tf_kernel_library(

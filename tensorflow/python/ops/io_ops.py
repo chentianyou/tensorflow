@@ -23,12 +23,14 @@ See the @{$python/io_ops} guide.
 @@sparse_placeholder
 @@ReaderBase
 @@TextLineReader
+@@OrcRowReader
 @@WholeFileReader
 @@IdentityReader
 @@TFRecordReader
 @@LMDBReader
 @@FixedLengthRecordReader
 @@decode_csv
+@@decode_orc
 @@decode_raw
 @@VarLenFeature
 @@FixedLenFeature
@@ -413,6 +415,33 @@ class TextLineReader(ReaderBase):
 
 ops.NotDifferentiable("TextLineReader")
 
+@tf_export("OrcRowReader")
+class OrcRowReader(ReaderBase):
+  """A Reader that outputs the orc of a file delimited by newlines.
+
+  Newlines are stripped from the output.
+  See ReaderBase for supported methods.
+
+  @compatibility(eager)
+  Readers are not compatible with eager execution. Instead, please
+  use `tf.data` to get data into your model.
+  @end_compatibility
+  """
+  # TODO(josh11b): Support serializing and restoring state.
+
+  def __init__(self, skip_header_lines=None, name=None):
+    """Create a OrcRowReader.
+
+    Args:
+      skip_header_lines: An optional int. Defaults to 0.  Number of lines
+        to skip from the beginning of every file.
+      name: A name for the operation (optional).
+    """
+    rr = gen_io_ops._orc_row_reader_v2(name=name)
+    super(OrcRowReader, self).__init__(rr)
+
+
+ops.NotDifferentiable("OrcRowReader")
 
 @tf_export("FixedLengthRecordReader")
 class FixedLengthRecordReader(ReaderBase):

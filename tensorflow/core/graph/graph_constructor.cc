@@ -622,6 +622,7 @@ Status GraphConstructor::ValidateShape(Node* node) {
           "IndexTable",
           "WholeFileReader",
           "TextLineReader",
+          "OrcRowReader",
           "FixedLengthRecordReader",
           "TFRecordReader",
           "IdentityReader",

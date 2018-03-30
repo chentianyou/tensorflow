@@ -209,11 +209,14 @@ ShardedFilespec
 TextLineReader
 TFRecordReader
 WholeFileReader
+OrcRowReader
 TextLineReaderV2
 TFRecordReaderV2
 WholeFileReaderV2
+OrcRowReaderV2
 LMDBReader
 DecodeCSV
+DecodeORC
 
 # linalg_ops
 BatchCholesky

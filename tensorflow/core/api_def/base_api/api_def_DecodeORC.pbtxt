@@ -1,0 +1,22 @@
+op {
+  graph_op_name: "DecodeORC"
+  in_arg {
+    name: "records"
+    description: <<END
+Each string is a record/row in the orc and all records should have
+the same format.
+END
+  }
+  out_arg {
+    name: "output"
+    description: <<END
+Each tensor will have the same shape as records.
+END
+  }
+  summary: "Convert ORC records to tensors. Each column maps to one tensor."
+  description: <<END
+RFC 4180 format is expected for the ORC records.
+(https://tools.ietf.org/html/rfc4180)
+Note that we allow leading and trailing spaces with int or float field.
+END
+}

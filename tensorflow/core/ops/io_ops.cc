@@ -289,6 +289,21 @@ REGISTER_OP("TextLineReaderV2")
     .SetIsStateful()
     .SetShapeFn(shape_inference::ScalarShape);
 
+REGISTER_OP("OrcRowReader")
+    .Output("reader_handle: Ref(string)")
+    .Attr("container: string = ''")
+    .Attr("shared_name: string = ''")
+    .SetIsStateful()
+    .SetShapeFn(TwoElementOutput)
+    .Deprecated(26, "Use OrcRowReaderV2");
+
+REGISTER_OP("OrcRowReaderV2")
+    .Output("reader_handle: resource")
+    .Attr("container: string = ''")
+    .Attr("shared_name: string = ''")
+    .SetIsStateful()
+    .SetShapeFn(shape_inference::ScalarShape);
+
 REGISTER_OP("FixedLengthRecordReader")
     .Output("reader_handle: Ref(string)")
     .Attr("header_bytes: int = 0")

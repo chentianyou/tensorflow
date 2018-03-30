@@ -1217,6 +1217,40 @@ def decode_csv(records, record_defaults, field_delim=",",
       na_value=na_value, name=name)
   # pylint: enable=protected-access
 
+# Swap `name` and `na_value` for backward compatibility.
+@tf_export("decode_orc")
+def decode_orc(records, name=None):
+  # pylint: disable=protected-access
+  """Convert ORC records to tensors. Each column maps to one tensor.
+
+  RFC 4180 format is expected for the ORC records.
+  (https://tools.ietf.org/html/rfc4180)
+  Note that we allow leading and trailing spaces with int or float field.
+
+  Args:
+    records: A `Tensor` of type `string`.
+      Each string is a record/row in the orc and all records should have
+      the same format.
+    record_defaults: A list of `Tensor` objects with specific types.
+      Acceptable types are `float32`, `float64`, `int32`, `int64`, `string`.
+      One tensor per column of the input record, with either a
+      scalar default value for that column or empty if the column is required.
+    field_delim: An optional `string`. Defaults to `","`.
+      char delimiter to separate fields in a record.
+    use_quote_delim: An optional `bool`. Defaults to `True`.
+      If false, treats double quotation marks as regular
+      characters inside of the string fields (ignoring RFC 4180, Section 2,
+      Bullet 5).
+    name: A name for the operation (optional).
+    na_value: Additional string to recognize as NA/NaN.
+
+  Returns:
+    A list of `Tensor` objects. Has the same type as `record_defaults`.
+    Each tensor will have the same shape as records.
+  """
+  # TODO(martinwicke), remove the wrapper when new Python API generator is done.
+  return gen_parsing_ops._decode_orc(records=records,OUT_TYPE=[dtypes.int32], name=name)
+  # pylint: enable=protected-access
 
 # TODO(b/70890287): Combine the implementation of this op and
 # `parse_single_example()` after 1/10/2018.

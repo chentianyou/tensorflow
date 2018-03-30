@@ -6257,6 +6257,34 @@ op {
   }
 }
 op {
+  name: "DecodeORC"
+  input_arg {
+    name: "records"
+    type: DT_STRING
+  }
+  output_arg {
+    name: "output"
+    type_list_attr: "OUT_TYPE"
+  }
+  attr {
+    name: "OUT_TYPE"
+    type: "list(type)"
+    has_minimum: false
+    allowed_values {
+      list {
+        type: DT_FLOAT
+        type: DT_DOUBLE
+        type: DT_INT8
+        type: DT_INT16
+        type: DT_BOOL
+        type: DT_INT32
+        type: DT_INT64
+        type: DT_STRING
+      }
+    }
+  }
+}
+op {
   name: "DecodeCompressed"
   input_arg {
     name: "bytes"
@@ -30151,6 +30179,62 @@ op {
 }
 op {
   name: "TextLineReaderV2"
+  output_arg {
+    name: "reader_handle"
+    type: DT_RESOURCE
+  }
+  attr {
+    name: "skip_header_lines"
+    type: "int"
+    default_value {
+      i: 0
+    }
+  }
+  attr {
+    name: "container"
+    type: "string"
+    default_value {
+      s: ""
+    }
+  }
+  attr {
+    name: "shared_name"
+    type: "string"
+    default_value {
+      s: ""
+    }
+  }
+  is_stateful: true
+}
+op {
+  name: "OrcRowReader"
+  output_arg {
+    name: "reader_handle"
+    type: DT_STRING
+    is_ref: true
+  }
+  attr {
+    name: "container"
+    type: "string"
+    default_value {
+      s: ""
+    }
+  }
+  attr {
+    name: "shared_name"
+    type: "string"
+    default_value {
+      s: ""
+    }
+  }
+  deprecation {
+    version: 26
+    explanation: "Use OrcRowReaderV2"
+  }
+  is_stateful: true
+}
+op {
+  name: "OrcRowReaderV2"
   output_arg {
     name: "reader_handle"
     type: DT_RESOURCE

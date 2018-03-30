@@ -261,6 +261,16 @@ REGISTER_OP("DecodeCSV")
       return Status::OK();
     });
 
+REGISTER_OP("DecodeORC")
+    .Input("records: string")
+    .Output("output: OUT_TYPE")
+    .Attr("OUT_TYPE: list({float,double,int8,int16,int32,int64,bool,string})")
+    .SetShapeFn([](InferenceContext* c) {
+      // Propagate shape of the records input.
+      for (int i = 0; i < c->num_outputs(); ++i) c->set_output(i, c->input(0));
+      return Status::OK();
+    });
+
 REGISTER_OP("StringToNumber")
     .Input("string_tensor: string")
     .Output("output: out_type")

@@ -92,6 +92,6 @@ new_http_archive(
 
 new_local_repository(
     name = "orc",
-    path = "/Users/chentianyou/dev/orc_lib",
+    path = "/opt/dependency/package",
     build_file = "//third_party/orc:orc.BUILD"
 )
