@@ -15,7 +15,6 @@ limitations under the License.
 
 // See docs in ../ops/parsing_ops.cc.
 #include <vector>
-#include <iostream>
 
 #include "storage/format/format.h"
 #include "tensorflow/core/framework/op_kernel.h"

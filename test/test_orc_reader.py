@@ -3,11 +3,13 @@ import tensorflow as tf
 def read_file_format(filename_queue):
     reader = tf.OrcRowReader()
     key, value = reader.read(filename_queue)
-    cols = tf.decode_orc(value)
+    # record_defaults=[[0.0]]*9
+    # cols = tf.decode_csv(value, record_defaults=record_defaults)
+    out_type = [tf.float64]*9
+    cols = tf.decode_orc(value,out_tpye = out_type)
     features = tf.stack(cols[0:-1])
     label = tf.stack(cols[-1])
     return features, label
-
 
 def input_pipeline(filenames, batch_size, num_epochs=None):
     filename_queue = tf.train.string_input_producer(
@@ -24,7 +26,7 @@ def input_pipeline(filenames, batch_size, num_epochs=None):
     # return example_batch, label_batch
 
 files = ["/Users/chentianyou/dev/tensorflow/test/data/W1F87D214-281F-11E8-BE8A-8C85904DEC7F"]
-
+#files = ["/Users/chentianyou/dev/tf_example/data/housing_features.csv"]
 features, target = input_pipeline(files, 50, num_epochs=1)
 
 with tf.Session() as sess:

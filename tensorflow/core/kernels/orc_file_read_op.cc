@@ -38,34 +38,24 @@ class OrcRowReader : public ReaderBase {
     params_.set("table.options",
                 "{\"compresstype\":\"snappy\",\"rlecoder\":\"v2\","
                 "\"bloomfilter\":\"0\"}");
+    format_ = storage::Format::createFormat(univplan::ORC_FORMAT, &params_);
+    format_->setFileSystemManager(&FSManager_);
   }
 
   Status OnWorkStartedLocked() override {
-    if (!isScaned(current_work())) {
-      worked_.push_back(current_work());
-      offset_ = 0;
-      string protocol, path;
-      getPathFromUrl(current_work(), protocol, path);
-      // sleep(30);
-
-      format_ = storage::Format::createFormat(univplan::ORC_FORMAT, &params_);
-      format_->setFileSystemManager(&FSManager_);
-
-      string fullFileName = protocol + path;
-      string fileName(path);
-      dbcommon::FileSystem* fs = FSManager_.get(fullFileName.c_str());
-      std::vector<storage::Input::uptr> files;
-      dbcommon::FileInfo::uptr info = fs->getFileInfo(fileName.c_str());
-      storage::Input::uptr file(
-          new storage::FileInput(fullFileName.c_str(), info->size));
-      files.push_back(std::move(file));
-      std::unique_ptr<univplan::UnivPlanScanTaskList> tasks =
-          format_->createTasks(files, 1);
-      const univplan::UnivPlanScanTask& t = tasks->Get(0);
-      format_->beginScan(string(""), &(t.splits()), nullptr, nullptr, nullptr,
-                         false);
-    }
-    std::cout << "start work:" << current_work() << std::endl;
+    offset_ = 0;
+    string protocol, path;
+    getPathFromUrl(current_work(), protocol, path);
+    string fullFileName = protocol + path;
+    dbcommon::FileSystem* fs = FSManager_.get(fullFileName.c_str());
+    std::vector<storage::Input::uptr> files;
+    dbcommon::FileInfo::uptr info = fs->getFileInfo(path.c_str());
+    storage::Input::uptr file(
+        new storage::FileInput(fullFileName.c_str(), info->size));
+    files.push_back(std::move(file));
+    tasks_ = format_->createTasks(files, 1);
+    const univplan::UnivPlanScanTask& t = tasks_->Get(0);
+    format_->beginScan(string(""), &(t.splits()), nullptr, nullptr, nullptr, false);
     return Status::OK();
   }
 
@@ -73,6 +63,7 @@ class OrcRowReader : public ReaderBase {
     format_->endScan();
     format_.reset(nullptr);
     result_.reset(nullptr);
+    tasks_.reset(nullptr);
     return Status::OK();
   }
 
@@ -97,22 +88,6 @@ class OrcRowReader : public ReaderBase {
       *at_end = true;
       return Status::OK();
     }
-    // offset_++;
-    // if (offset_ % 100 == 0) {
-    //   *at_end = true;
-    // } else {
-    //   *key = strings::StrCat(current_work(), ":", offset_);
-    //   int64 colCount = 1;
-    //   core::PutFixed64(value, colCount);
-    //   int32 kind = DT_INT32;
-    //   core::PutFixed32(value, kind);
-    //   int64 len = sizeof(int32);
-    //   core::PutFixed64(value, len);
-    //   int32 data = 1991;
-    //   core::PutFixed32(value, data);
-    //   *produced = true;
-    //   std::cout << "read line " << offset_ << std::endl;
-    // }
     return Status::OK();
   }
 
@@ -121,6 +96,7 @@ class OrcRowReader : public ReaderBase {
     rowId_ = 0;
     format_.reset(nullptr);
     result_.reset(nullptr);
+    tasks_.reset(nullptr);
     return ReaderBase::ResetLocked();
   }
 
@@ -132,24 +108,14 @@ class OrcRowReader : public ReaderBase {
   dbcommon::FileSystemManager FSManager_;
   dbcommon::Parameters params_;
   std::unique_ptr<storage::Format> format_;
+  std::unique_ptr<univplan::UnivPlanScanTaskList> tasks_;
   dbcommon::TupleBatch::uptr result_;
-  std::vector<string> worked_;
-
-  bool isScaned(string file) {
-    for (size_t i = 0; i < worked_.size(); i++) {
-      if (file == worked_[i]) return true;
-    }
-    return false;
-  }
 
   void orcStringEncode(const dbcommon::TupleBatchReader& reader, uint64_t rowId,
                        string* value) {
     if (result_ != nullptr) {
-      auto colLen = sizeof(uint64_t);
-      char colbuf[colLen];
       uint64_t colCount = result_->getNumOfColumns();
-      core::EncodeFixed64(colbuf, colCount);
-      value->append(colbuf, colLen);
+      core::PutFixed64(value,colCount);
       for (uint64_t i = 0; i < colCount; i++) {
         auto kind = reader[i]->getTypeKind();
         switch (kind) {
