@@ -68,10 +68,10 @@ class Iterator(object):
       RuntimeError: When invoked without eager execution enabled.
     """
 
-    if not context.in_eager_mode():
+    if not context.executing_eagerly():
       raise RuntimeError(
           "{} objects can only be used when eager execution is enabled, use "
-          "tf.data.Dataset.make_iterator or "
+          "tf.data.Dataset.make_initializable_iterator or "
           "tf.data.Dataset.make_one_shot_iterator for graph construction".
           format(type(self)))
     with ops.device("/device:CPU:0"):
@@ -112,7 +112,7 @@ class Iterator(object):
         remote_fn.add_to_graph(None)
         target = constant_op.constant("/device:CPU:0")
       with ops.device(self._device):
-        self._buffer_resource_handle = prefetching_ops.function_buffering_resource(
+        self._buffer_resource_handle = prefetching_ops.function_buffering_resource(  # pylint: disable=line-too-long
             string_arg=iter_string_handle,
             f=remote_fn,
             target_device=target,
@@ -120,8 +120,9 @@ class Iterator(object):
             thread_pool_size=1,
             container="",
             shared_name=_generate_shared_name("function_buffer_resource"))
-        self._buffer_resource_deleter = resource_variable_ops.EagerResourceDeleter(
-            handle=self._buffer_resource_handle, handle_device=self._device)
+        self._buffer_resource_deleter = resource_variable_ops.EagerResourceDeleter(  # pylint: disable=line-too-long
+            handle=self._buffer_resource_handle,
+            handle_device=self._device)
 
   def __iter__(self):
     return self
