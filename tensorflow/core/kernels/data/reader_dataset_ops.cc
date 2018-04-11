@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
+#include "dbcommon/filesystem/file-system-manager.h"
+#include "storage/format/format.h"
 #include "tensorflow/core/framework/partial_tensor_shape.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/kernels/data/dataset.h"
@@ -686,6 +688,306 @@ class TFRecordDatasetOp : public DatasetOpKernel {
 
 REGISTER_KERNEL_BUILDER(Name("TFRecordDataset").Device(DEVICE_CPU),
                         TFRecordDatasetOp);
+class ORCFileDatasetOp : public DatasetOpKernel {
+ public:
+  using DatasetOpKernel::DatasetOpKernel;
+
+  void MakeDataset(OpKernelContext* ctx, DatasetBase** output) override {
+    const Tensor* filenames_tensor;
+    OP_REQUIRES_OK(ctx, ctx->input("filenames", &filenames_tensor));
+    OP_REQUIRES(
+        ctx, filenames_tensor->dims() <= 1,
+        errors::InvalidArgument("`filenames` must be a scalar or a vector."));
+
+    std::vector<string> filenames;
+    filenames.reserve(filenames_tensor->NumElements());
+    for (int i = 0; i < filenames_tensor->NumElements(); ++i) {
+      filenames.push_back(filenames_tensor->flat<string>()(i));
+    }
+
+    string compression_type;
+    OP_REQUIRES_OK(ctx, ParseScalarArgument<string>(ctx, "compression_type",
+                                                    &compression_type));
+
+    *output = new Dataset(ctx, std::move(filenames), compression_type);
+  }
+
+ private:
+  class Dataset : public GraphDatasetBase {
+   public:
+    explicit Dataset(OpKernelContext* ctx, std::vector<string> filenames,
+                     const string& compression_type)
+        : GraphDatasetBase(ctx),
+          filenames_(std::move(filenames)),
+          compression_type_(compression_type) {
+      params_.set("number.tuples.per.batch", std::to_string(batch_size_));
+      params_.set("table.options", "{\"compresstype\":\"" + compression_type_ +
+                                       "\",\"rlecoder\":\"v2\","
+                                       "\"bloomfilter\":\"0\"}");
+      format_ = storage::Format::createFormat(univplan::ORC_FORMAT, &params_);
+    }
+
+    std::unique_ptr<IteratorBase> MakeIterator(
+        const string& prefix) const override {
+      return std::unique_ptr<IteratorBase>(
+          new Iterator({this, strings::StrCat(prefix, "::ORCFile")}));
+    }
+
+    const DataTypeVector& output_dtypes() const override {
+      static DataTypeVector* dtypes = new DataTypeVector({DT_STRING});
+      return *dtypes;
+    }
+
+    const std::vector<PartialTensorShape>& output_shapes() const override {
+      static std::vector<PartialTensorShape>* shapes =
+          new std::vector<PartialTensorShape>({{}});
+      return *shapes;
+    }
+
+    string DebugString() override { return "ORCFileDatasetOp::Dataset"; }
+
+   protected:
+    Status AsGraphDefInternal(DatasetGraphDefBuilder* b,
+                              Node** output) const override {
+      Node* filenames = nullptr;
+      TF_RETURN_IF_ERROR(b->AddVector(filenames_, &filenames));
+      Node* compression_type = nullptr;
+      TF_RETURN_IF_ERROR(b->AddScalar(compression_type_, &compression_type));
+      TF_RETURN_IF_ERROR(
+          b->AddDataset(this, {filenames, compression_type}, output));
+      return Status::OK();
+    }
+
+   private:
+    class Iterator : public DatasetIterator<Dataset> {
+     public:
+      explicit Iterator(const Params& params)
+          : DatasetIterator<Dataset>(params) {
+        dataset()->format_->setFileSystemManager(&FSManager_);
+        offset_.reserve(dataset()->filenames_.size());
+        for (size_t i = 0; i < dataset()->filenames_.size(); ++i) {
+          offset_.push_back(0);
+        }
+      }
+
+      Status GetNextInternal(IteratorContext* ctx,
+                             std::vector<Tensor>* out_tensors,
+                             bool* end_of_sequence) override {
+        mutex_lock l(mu_);
+        do {
+          // We are currently processing a file, so try to read the next record.
+          if (tasks_) {
+            Tensor result_tensor(ctx->allocator({}), DT_STRING, {});
+            uint64 rowId =
+                offset_[current_file_index_] % dataset()->batch_size_;
+            if (rowId == 0) {
+              result_ = dataset()->format_->next();
+            }
+            if (result_ != nullptr) {
+              Status s =
+                  orcStringEncode(rowId, &result_tensor.scalar<string>()());
+              if (s.ok()) {
+                offset_[current_file_index_]++;
+                out_tensors->emplace_back(std::move(result_tensor));
+                *end_of_sequence = false;
+                return Status::OK();
+              } else if (!errors::IsOutOfRange(s)) {
+                return s;
+              }
+            }
+
+            // We have reached the end of the current file, so maybe
+            // move on to next file.
+            ResetStreamsLocked();
+            ++current_file_index_;
+          }
+
+          // Iteration ends when there are no more files to process.
+          if (current_file_index_ == dataset()->filenames_.size()) {
+            *end_of_sequence = true;
+            return Status::OK();
+          }
+
+          TF_RETURN_IF_ERROR(SetupStreamsLocked(ctx->env()));
+        } while (true);
+      }
+
+     protected:
+      Status SaveInternal(IteratorStateWriter* writer) override {
+        mutex_lock l(mu_);
+        TF_RETURN_IF_ERROR(writer->WriteScalar(full_name("current_file_index"),
+                                               current_file_index_));
+
+        if (tasks_) {
+          TF_RETURN_IF_ERROR(writer->WriteScalar(full_name("offset"),
+                                                 offset_[current_file_index_]));
+        }
+        return Status::OK();
+      }
+
+      Status RestoreInternal(IteratorContext* ctx,
+                             IteratorStateReader* reader) override {
+        mutex_lock l(mu_);
+        ResetStreamsLocked();
+        int64 current_file_index;
+        TF_RETURN_IF_ERROR(reader->ReadScalar(full_name("current_file_index"),
+                                              &current_file_index));
+        current_file_index_ = size_t(current_file_index);
+        if (reader->Contains(full_name("offset"))) {
+          int64 offset;
+          TF_RETURN_IF_ERROR(reader->ReadScalar(full_name("offset"), &offset));
+          TF_RETURN_IF_ERROR(SetupStreamsLocked(ctx->env()));
+          offset_[current_file_index_] = offset;
+        }
+        return Status::OK();
+      }
+
+     private:
+      // Sets up reader streams to read from the file at `current_file_index_`.
+      Status SetupStreamsLocked(Env* env) EXCLUSIVE_LOCKS_REQUIRED(mu_) {
+        if (current_file_index_ >= dataset()->filenames_.size()) {
+          return errors::InvalidArgument(
+              "current_file_index_:", current_file_index_,
+              " >= filenames_.size():", dataset()->filenames_.size());
+        }
+
+        // Actually move on to next file.
+        const string& next_filename =
+            dataset()->filenames_[current_file_index_];
+        offset_[current_file_index_] = 0;
+        string protocol, path;
+        getPathFromUrl(next_filename, protocol, path);
+        string fullFileName = protocol + path;
+        dbcommon::FileSystem* fs = FSManager_.get(fullFileName.c_str());
+        if (!fs->exists(path.c_str())) return errors::NotFound(path.c_str());
+
+        std::vector<storage::Input::uptr> files;
+        dbcommon::FileInfo::uptr info = fs->getFileInfo(path.c_str());
+        storage::Input::uptr file(
+            new storage::FileInput(fullFileName.c_str(), info->size));
+        files.push_back(std::move(file));
+        tasks_ = dataset()->format_->createTasks(files, 1);
+        const univplan::UnivPlanScanTask& t = tasks_->Get(0);
+        dataset()->format_->beginScan(string(""), &(t.splits()), nullptr,
+                                      nullptr, nullptr, false);
+        return Status::OK();
+      }
+
+      // Resets all reader streams.
+      void ResetStreamsLocked() EXCLUSIVE_LOCKS_REQUIRED(mu_) {
+        dataset()->format_->endScan();
+        tasks_.reset();
+        result_.reset();
+      }
+
+      Status orcStringEncode(uint64_t rowId, string* value) {
+        if (result_ != nullptr) {
+          const dbcommon::TupleBatchReader& reader =
+              result_->getTupleBatchReader();
+          if (rowId >= result_->getNumOfRows()) {
+            return errors::OutOfRange("file to end.");
+          }
+          uint64_t colCount = result_->getNumOfColumns();
+          core::PutFixed64(value, colCount);
+          for (uint64_t i = 0; i < colCount; i++) {
+            auto kind = reader[i]->getTypeKind();
+            switch (kind) {
+                // integer
+              case dbcommon::BOOLEANID:
+                core::PutFixed32(value, DT_BOOL);
+                break;
+              case dbcommon::TINYINTID:
+                core::PutFixed32(value, DT_INT8);
+                break;
+              case dbcommon::SMALLINTID:
+                core::PutFixed32(value, DT_INT16);
+                break;
+              case dbcommon::INTID:
+                core::PutFixed32(value, DT_INT32);
+                break;
+              case dbcommon::BIGINTID:
+                core::PutFixed32(value, DT_INT64);
+                break;
+                // float
+              case dbcommon::FLOATID:
+                core::PutFixed32(value, DT_FLOAT);
+                break;
+              case dbcommon::DOUBLEID:
+                core::PutFixed32(value, DT_DOUBLE);
+                break;
+                // date
+              case dbcommon::DATEID:
+                core::PutFixed32(value, DT_INT32);
+                break;
+              case dbcommon::TIMEID:
+                core::PutFixed32(value, DT_INT64);
+                break;
+                // string
+              case dbcommon::STRINGID:
+                core::PutFixed32(value, DT_STRING);
+                break;
+              case dbcommon::VARCHARID:
+                core::PutFixed32(value, DT_STRING);
+                break;
+              case dbcommon::CHARID:
+                core::PutFixed32(value, DT_STRING);
+                break;
+
+              default:
+                core::PutFixed32(value, -1);
+                std::cout << "Can not encode type!" << std::endl;
+                continue;
+            }
+
+            uint64_t len;
+            bool isNull;
+            const char* data = reader[i]->read(rowId, &len, &isNull);
+            core::PutFixed64(value, len);
+            value->append(data, len);
+          }
+        }
+        return Status::OK();
+      }
+
+      void getPathFromUrl(const string& url, string& protocol, string& path) {
+        string protocolEnd = "://";
+        int pos = url.find(protocolEnd);
+        if (pos < 0) {  // local file system
+          protocol = "file://";
+          path = url;
+        } else {  // url
+          protocol = url.substr(0, pos + protocolEnd.size());
+          if (protocol == "file://") {
+            path = url.substr(pos + protocolEnd.size() - 1, url.size() - pos);
+          } else {
+            pos = url.find('/', pos + protocolEnd.size());
+            protocol = url.substr(0, pos);
+            path = url.substr(pos, url.size() - pos);
+          }
+        }
+      }
+
+      mutex mu_;
+      size_t current_file_index_ GUARDED_BY(mu_) = 0;
+
+      // `reader_` will borrow the object that `file_` points to, so
+      // we must destroy `reader_` before `file_`.
+      dbcommon::TupleBatch::uptr result_ GUARDED_BY(mu_);
+      std::unique_ptr<univplan::UnivPlanScanTaskList> tasks_ GUARDED_BY(mu_);
+      std::vector<uint64> offset_ GUARDED_BY(mu_);
+      dbcommon::FileSystemManager FSManager_ GUARDED_BY(mu_);
+    };
+
+    const std::vector<string> filenames_;
+    const string compression_type_;
+    const int batch_size_ = 32;
+    dbcommon::Parameters params_;
+    std::unique_ptr<storage::Format> format_;
+  };
+};
+
+REGISTER_KERNEL_BUILDER(Name("ORCFileDataset").Device(DEVICE_CPU),
+                        ORCFileDatasetOp);
 
 }  // namespace
 

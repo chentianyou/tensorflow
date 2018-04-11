@@ -76,6 +76,42 @@ class TextLineDataset(dataset_ops.Dataset):
   def output_types(self):
     return dtypes.string
 
+@tf_export("data.ORCFileDataset")
+class ORCFileDataset(dataset_ops.Dataset):
+  """A `Dataset` comprising lines from one or more text files."""
+
+  def __init__(self, filenames, compression_type="snappy"):
+    """Creates a `ORCFileDataset`.
+
+    Args:
+      filenames: A `tf.string` tensor containing one or more filenames.
+      compression_type: (Optional.) A `tf.string` scalar evaluating to one of
+        `"snappy"` (default), `"lz4"`, or `"none"`.
+    """
+    super(ORCFileDataset, self).__init__()
+    self._filenames = ops.convert_to_tensor(
+        filenames, dtype=dtypes.string, name="filenames")
+    self._compression_type = convert.optional_param_to_tensor(
+        "compression_type",
+        compression_type,
+        argument_default="",
+        argument_dtype=dtypes.string)
+
+  def _as_variant_tensor(self):
+    return gen_dataset_ops.orc_file_dataset(
+        self._filenames, self._compression_type)
+
+  @property
+  def output_classes(self):
+    return ops.Tensor
+
+  @property
+  def output_shapes(self):
+    return tensor_shape.scalar()
+
+  @property
+  def output_types(self):
+    return dtypes.string
 
 class _TFRecordDataset(dataset_ops.Dataset):
   """A `Dataset` comprising records from one or more TFRecord files."""

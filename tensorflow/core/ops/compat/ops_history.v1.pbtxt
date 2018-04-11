@@ -64175,6 +64175,22 @@ op {
   is_stateful: true
 }
 op {
+  name: "ORCFileDataset"
+  input_arg {
+    name: "filenames"
+    type: DT_STRING
+  }
+  input_arg {
+    name: "compression_type"
+    type: DT_STRING
+  }
+  output_arg {
+    name: "handle"
+    type: DT_VARIANT
+  }
+  is_stateful: true
+}
+op {
   name: "TextLineReader"
   output_arg {
     name: "reader_handle"

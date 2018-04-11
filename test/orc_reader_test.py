@@ -1,12 +1,14 @@
 import tensorflow as tf
 
 def read_file_format(filename_queue):
+    # reader = tf.TextLineReader()
     reader = tf.OrcRowReader()
     key, value = reader.read(filename_queue)
     # record_defaults=[[0.0]]*9
     # cols = tf.decode_csv(value, record_defaults=record_defaults)
+    # out_type = [tf.int32,tf.string]
     out_type = [tf.float64]*9
-    cols = tf.decode_orc(value,out_tpye = out_type)
+    cols = tf.decode_orc(value,out_type = out_type)
     features = tf.stack(cols[0:-1])
     label = tf.stack(cols[-1])
     return features, label
@@ -25,8 +27,8 @@ def input_pipeline(filenames, batch_size, num_epochs=None):
     #     min_after_dequeue=min_after_dequeue)
     # return example_batch, label_batch
 
-files = ["/Users/chentianyou/dev/tensorflow/test/data/W1F87D214-281F-11E8-BE8A-8C85904DEC7F"]
-#files = ["/Users/chentianyou/dev/tf_example/data/housing_features.csv"]
+files = ["hdfs://localhost:9000/hawq/dfs_default/postgres/public/housing_orc/W27627B74-3CA6-11E8-A2AB-FE008C60F601"]
+# files = ["/Users/chentianyou/dev/tf_example/data/housing_features.csv"]
 features, target = input_pipeline(files, 50, num_epochs=1)
 
 with tf.Session() as sess:
@@ -36,11 +38,11 @@ with tf.Session() as sess:
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(coord=coord)
     try:
-       step = 0
+       step = 1
        while not coord.should_stop():
            batch_x, batch_y = sess.run([features, target])
-           print(batch_x)
-           print(batch_y)
+           print(step,batch_x,batch_y)
+           step += 1
     except tf.errors.OutOfRangeError:
        print('Done training, epoch reached')
     finally:

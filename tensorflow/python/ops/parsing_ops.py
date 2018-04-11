@@ -1216,7 +1216,7 @@ def decode_csv(records, record_defaults, field_delim=",",
 
 # Swap `name` and `na_value` for backward compatibility.
 @tf_export("decode_orc")
-def decode_orc(records, out_tpye, name=None):
+def decode_orc(records, out_type, name=None):
   # pylint: disable=protected-access
   """Convert ORC records to tensors. Each column maps to one tensor.
 
@@ -1246,7 +1246,7 @@ def decode_orc(records, out_tpye, name=None):
     Each tensor will have the same shape as records.
   """
   # TODO(martinwicke), remove the wrapper when new Python API generator is done.
-  return gen_parsing_ops._decode_orc(records=records, OUT_TYPE=out_tpye, name=name)
+  return gen_parsing_ops.decode_orc(records=records, OUT_TYPE=out_type, name=name)
   # pylint: enable=protected-access
 
 # TODO(b/70890287): Combine the implementation of this op and

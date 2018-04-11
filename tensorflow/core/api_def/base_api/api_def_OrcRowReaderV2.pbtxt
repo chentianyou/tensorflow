@@ -10,6 +10,12 @@ The handle to reference the Reader.
 END
   }
   attr {
+    name: "compression_type"
+    description: <<END
+Compression type of orc file (snappy, lz4, none).
+END
+  }
+  attr {
     name: "container"
     description: <<END
 If non-empty, this reader is placed in the given container.

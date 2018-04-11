@@ -436,7 +436,7 @@ class OrcRowReader(ReaderBase):
         to skip from the beginning of every file.
       name: A name for the operation (optional).
     """
-    rr = gen_io_ops._orc_row_reader_v2(name=name)
+    rr = gen_io_ops.orc_row_reader_v2(name=name)
     super(OrcRowReader, self).__init__(rr)
 
 

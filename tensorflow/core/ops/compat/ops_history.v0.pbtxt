@@ -9676,6 +9676,13 @@ op {
     name: "output"
     type_list_attr: "OUT_TYPE"
   }
+  attr {
+    name: "compression_type"
+    type: "string"
+    default_value {
+      s: ","
+    }
+  }
 }
 op {
   name: "DecodeGif"

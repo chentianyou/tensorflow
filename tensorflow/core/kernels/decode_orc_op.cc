@@ -16,19 +16,21 @@ limitations under the License.
 // See docs in ../ops/parsing_ops.cc.
 #include <vector>
 
-#include "storage/format/format.h"
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/framework/tensor.h"
 #include "tensorflow/core/framework/tensor_shape.h"
 #include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/lib/core/errors.h"
-#include "tensorflow/core/lib/strings/numbers.h"
 
 namespace tensorflow {
 
 class DecodeORCOp : public OpKernel {
  public:
-  explicit DecodeORCOp(OpKernelConstruction* ctx) : OpKernel(ctx) {}
+  explicit DecodeORCOp(OpKernelConstruction* ctx) : OpKernel(ctx) {
+    OP_REQUIRES_OK(ctx, ctx->GetAttr("OUT_TYPE", &out_type_));
+    OP_REQUIRES(ctx, out_type_.size() < std::numeric_limits<int>::max(),
+                errors::InvalidArgument("Out type too large"));
+  }
 
   void Compute(OpKernelContext* ctx) override {
     const Tensor* records;
@@ -41,26 +43,22 @@ class DecodeORCOp : public OpKernel {
     OpOutputList output;
     OP_REQUIRES_OK(ctx, ctx->output_list("output", &output));
 
-    bool isInit = false;
+    for (int i = 0; i < static_cast<int>(out_type_.size()); ++i) {
+      Tensor* out = nullptr;
+      OP_REQUIRES_OK(ctx, output.allocate(i, records->shape(), &out));
+    }
+
     for (int64 i = 0; i < records_size; ++i) {
       const StringPiece record(records_t(i));
       std::vector<string> fields;
-      ExtractOrcFields(ctx, record, &fields, &out_type_);
-      if (!isInit) {
-        for (int i = 0; i < static_cast<int>(out_type_.size()); ++i) {
-          Tensor* out = nullptr;
-          OP_REQUIRES_OK(ctx, output.allocate(i, records->shape(), &out));
-        }
-        isInit = true;
-      }
+      ExtractOrcFields(ctx, record, &fields);
       OP_REQUIRES(ctx, fields.size() == out_type_.size(),
                   errors::InvalidArgument("Expect ", out_type_.size(),
                                           " fields but have ", fields.size(),
                                           " in record ", i));
-
       // Check each field in the record
       for (int f = 0; f < static_cast<int>(out_type_.size()); ++f) {
-        const uint32 dtype = out_type_[f];
+        const DataType& dtype = out_type_[f];
         switch (dtype) {
           case DT_BOOL: {
             if (fields[f].empty()) {
@@ -71,8 +69,8 @@ class DecodeORCOp : public OpKernel {
               output[f]->flat<bool>()(i) = false;
             } else {
               bool value;
-              memcpy(&value, fields[f].data(), fields[f].size());
-              output[f]->flat<bool>()(i) = static_cast<bool>(value);
+              memcpy(&value, fields[f].data(), sizeof(bool));
+              output[f]->flat<bool>()(i) = value;
             }
             break;
           }
@@ -85,8 +83,8 @@ class DecodeORCOp : public OpKernel {
               output[f]->flat<int8>()(i) = 0;
             } else {
               int8 value;
-              memcpy(&value, fields[f].data(), fields[f].size());
-              output[f]->flat<int8>()(i) = static_cast<int8>(value);
+              memcpy(&value, fields[f].data(), sizeof(int8));
+              output[f]->flat<int8>()(i) = value;
             }
             break;
           }
@@ -99,8 +97,8 @@ class DecodeORCOp : public OpKernel {
               output[f]->flat<int16>()(i) = 0;
             } else {
               int16 value;
-              memcpy(&value, fields[f].data(), fields[f].size());
-              output[f]->flat<int16>()(i) = static_cast<int16>(value);
+              memcpy(&value, fields[f].data(), sizeof(int16));
+              output[f]->flat<int16>()(i) = value;
             }
           }
           case DT_INT32: {
@@ -114,8 +112,8 @@ class DecodeORCOp : public OpKernel {
               output[f]->flat<int32>()(i) = 0;
             } else {
               int32 value;
-              memcpy(&value, fields[f].data(), fields[f].size());
-              output[f]->flat<int32>()(i) = static_cast<int64>(value);
+              memcpy(&value, fields[f].data(), sizeof(int32));
+              output[f]->flat<int32>()(i) = value;
             }
             break;
           }
@@ -131,7 +129,7 @@ class DecodeORCOp : public OpKernel {
               output[f]->flat<int64>()(i) = 0;
             } else {
               int64 value;
-              memcpy(&value, fields[f].data(), fields[f].size());
+              memcpy(&value, fields[f].data(), sizeof(int64));
               output[f]->flat<int64>()(i) = value;
             }
             break;
@@ -147,7 +145,7 @@ class DecodeORCOp : public OpKernel {
               output[f]->flat<float>()(i) = 0.0f;
             } else {
               float value;
-              memcpy(&value, fields[f].data(), fields[f].size());
+              memcpy(&value, fields[f].data(), sizeof(float));
               output[f]->flat<float>()(i) = value;
             }
             break;
@@ -163,7 +161,7 @@ class DecodeORCOp : public OpKernel {
               output[f]->flat<double>()(i) = 0.0;
             } else {
               double value;
-              memcpy(&value, fields[f].data(), fields[f].size());
+              memcpy(&value, fields[f].data(), sizeof(double));
               output[f]->flat<double>()(i) = value;
             }
             break;
@@ -193,26 +191,26 @@ class DecodeORCOp : public OpKernel {
   }
 
  private:
-  std::vector<int32> out_type_;
+  std::vector<DataType> out_type_;
 
   void ExtractOrcFields(OpKernelContext* ctx, StringPiece input,
-                        std::vector<string>* result,
-                        std::vector<int32>* dtype) {
+                        std::vector<string>* result) {
     if (!input.empty()) {
-      dtype->clear();
       int offset = 0;
       uint64 columnCount;
       memcpy(&columnCount, input.data(), sizeof(uint64));
       offset += sizeof(uint64);
 
       for (uint64 i = 0; i < columnCount; i++) {
+        string value;
         // get type
         uint32 kind;
         memcpy(&kind, input.data() + offset, sizeof(uint32));
         offset += sizeof(uint32);
-        dtype->push_back(kind);
         if (kind == -1) {  // invalid data
-          result->push_back("\0");
+          value.append("\0");
+          value.resize(1);
+          result->push_back(value);
           continue;
         }
 
@@ -222,7 +220,9 @@ class DecodeORCOp : public OpKernel {
         char data[length];
         memcpy(data, input.data() + offset, length);
         offset += length;
-        result->push_back(string(data));
+        value.append(data);
+        value.resize(length);
+        result->push_back(value);
       }
     }
   }

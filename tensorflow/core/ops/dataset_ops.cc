@@ -368,6 +368,17 @@ REGISTER_OP("TextLineDataset")
                                                 // a scalar or a
                                                 // vector.
 
+REGISTER_OP("ORCFileDataset")
+    .Input("filenames: string")
+    .Input("compression_type: string")
+    .Output("handle: variant")
+    .SetIsStateful()  // TODO(b/65524810): Source dataset ops must be marked
+                      // stateful to inhibit constant folding.
+    .SetShapeFn(shape_inference::ScalarShape);  // TODO(mrry): validate
+                                                // that `filenames` is
+                                                // a scalar or a
+                                                // vector.
+
 REGISTER_OP("SqlDataset")
     .Input("driver_name: string")
     .Input("data_source_name: string")

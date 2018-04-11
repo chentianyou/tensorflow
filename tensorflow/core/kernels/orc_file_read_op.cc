@@ -15,7 +15,6 @@ limitations under the License.
 
 // See docs in ../ops/io_ops.cc.
 
-#include <iostream>
 #include <memory>
 #include "dbcommon/filesystem/file-system-manager.h"
 #include "storage/format/format.h"
@@ -30,14 +29,16 @@ limitations under the License.
 namespace tensorflow {
 class OrcRowReader : public ReaderBase {
  public:
-  OrcRowReader(const string& node_name, Env* env)
+  OrcRowReader(const string& node_name, const string& compression_type,
+               Env* env)
       : ReaderBase(strings::StrCat("OrcRowReader '", node_name, "'")),
         env_(env),
-        offset_(0) {
+        offset_(0),
+        compression_type_(compression_type) {
     params_.set("number.tuples.per.batch", std::to_string(batch_size_));
-    params_.set("table.options",
-                "{\"compresstype\":\"snappy\",\"rlecoder\":\"v2\","
-                "\"bloomfilter\":\"0\"}");
+    params_.set("table.options", "{\"compresstype\":\"" + compression_type_ +
+                                     "\",\"rlecoder\":\"v2\","
+                                     "\"bloomfilter\":\"0\"}");
     format_ = storage::Format::createFormat(univplan::ORC_FORMAT, &params_);
     format_->setFileSystemManager(&FSManager_);
   }
@@ -48,6 +49,8 @@ class OrcRowReader : public ReaderBase {
     getPathFromUrl(current_work(), protocol, path);
     string fullFileName = protocol + path;
     dbcommon::FileSystem* fs = FSManager_.get(fullFileName.c_str());
+    if (!fs->exists(path.c_str())) return errors::NotFound(path.c_str());
+    
     std::vector<storage::Input::uptr> files;
     dbcommon::FileInfo::uptr info = fs->getFileInfo(path.c_str());
     storage::Input::uptr file(
@@ -55,7 +58,8 @@ class OrcRowReader : public ReaderBase {
     files.push_back(std::move(file));
     tasks_ = format_->createTasks(files, 1);
     const univplan::UnivPlanScanTask& t = tasks_->Get(0);
-    format_->beginScan(string(""), &(t.splits()), nullptr, nullptr, nullptr, false);
+    format_->beginScan(string(""), &(t.splits()), nullptr, nullptr, nullptr,
+                       false);
     return Status::OK();
   }
 
@@ -104,18 +108,19 @@ class OrcRowReader : public ReaderBase {
   Env* const env_;
   uint64 offset_;
   uint64 rowId_;
-  uint64 batch_size_ = 32;
+  const int batch_size_ = 32;
+  string compression_type_;
   dbcommon::FileSystemManager FSManager_;
   dbcommon::Parameters params_;
+  dbcommon::TupleBatch::uptr result_;
   std::unique_ptr<storage::Format> format_;
   std::unique_ptr<univplan::UnivPlanScanTaskList> tasks_;
-  dbcommon::TupleBatch::uptr result_;
 
   void orcStringEncode(const dbcommon::TupleBatchReader& reader, uint64_t rowId,
                        string* value) {
     if (result_ != nullptr) {
       uint64_t colCount = result_->getNumOfColumns();
-      core::PutFixed64(value,colCount);
+      core::PutFixed64(value, colCount);
       for (uint64_t i = 0; i < colCount; i++) {
         auto kind = reader[i]->getTypeKind();
         switch (kind) {
@@ -200,7 +205,18 @@ class OrcRowReaderOp : public ReaderOpKernel {
       : ReaderOpKernel(context) {
     Env* env = context->env();
 
-    SetReaderFactory([this, env]() { return new OrcRowReader(name(), env); });
+    string compression_type;
+    OP_REQUIRES_OK(context,
+                   context->GetAttr("compression_type", &compression_type));
+    OP_REQUIRES(
+        context,
+        compression_type == "snappy" || compression_type == "lz4" ||
+            compression_type == "none",
+        errors::InvalidArgument("compression_type must be snappy, lz4 or none",
+                                compression_type));
+    SetReaderFactory([this, compression_type, env]() {
+      return new OrcRowReader(name(), compression_type, env);
+    });
   }
 };
 

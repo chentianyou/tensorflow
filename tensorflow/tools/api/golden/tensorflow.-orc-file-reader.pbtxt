@@ -13,7 +13,7 @@ tf_class {
   }
   member_method {
     name: "__init__"
-    argspec: "args=[\'self\', \'name\'], varargs=None, keywords=None, defaults=[\'None\'], "
+    argspec: "args=[\'self\', \'compression_type\', \'name\'], varargs=None, keywords=None, defaults=[\'snappy\', \'None\'], "
   }
   member_method {
     name: "num_records_produced"

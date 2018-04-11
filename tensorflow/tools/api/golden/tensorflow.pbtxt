@@ -908,9 +908,9 @@ tf_module {
     name: "decode_csv"
     argspec: "args=[\'records\', \'record_defaults\', \'field_delim\', \'use_quote_delim\', \'name\', \'na_value\'], varargs=None, keywords=None, defaults=[\',\', \'True\', \'None\', \'\'], "
   }
-    member_method {
+  member_method {
     name: "decode_orc"
-    argspec: "args=[\'records\', \'name\'], varargs=None, keywords=None, defaults=[\'None\'], "
+    argspec: "args=[\'records\', \'compression_type\', \'name\'], varargs=None, keywords=None, defaults=[\'snappy\', \'None\'], "
   }
   member_method {
     name: "decode_json_example"
