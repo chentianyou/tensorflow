@@ -14,7 +14,6 @@ limitations under the License.
 ==============================================================================*/
 
 // See docs in ../ops/io_ops.cc.
-
 #include <memory>
 #include "dbcommon/filesystem/file-system-manager.h"
 #include "storage/format/format.h"

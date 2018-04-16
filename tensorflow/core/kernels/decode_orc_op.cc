@@ -220,8 +220,7 @@ class DecodeORCOp : public OpKernel {
         char data[length];
         memcpy(data, input.data() + offset, length);
         offset += length;
-        value.append(data);
-        value.resize(length);
+        value.append(data, length);
         result->push_back(value);
       }
     }

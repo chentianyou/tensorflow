@@ -1,4 +1,6 @@
 #! /bin/bash
+source ~/.anaconda_profile
+
 parameter="//tensorflow/tools/pip_package:build_pip_package \
 --compilation_mode=dbg \
 --sandbox_debug \
