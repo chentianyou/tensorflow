@@ -17,6 +17,8 @@ limitations under the License.
 #include <memory>
 #include "dbcommon/filesystem/file-system-manager.h"
 #include "storage/format/format.h"
+#include "tensorflow/core/example/example.pb.h"
+#include "tensorflow/core/example/feature.pb.h"
 #include "tensorflow/core/framework/reader_base.h"
 #include "tensorflow/core/framework/reader_op_kernel.h"
 #include "tensorflow/core/framework/types.h"
@@ -49,7 +51,7 @@ class OrcRowReader : public ReaderBase {
     string fullFileName = protocol + path;
     dbcommon::FileSystem* fs = FSManager_.get(fullFileName.c_str());
     if (!fs->exists(path.c_str())) return errors::NotFound(path.c_str());
-    
+
     std::vector<storage::Input::uptr> files;
     dbcommon::FileInfo::uptr info = fs->getFileInfo(path.c_str());
     storage::Input::uptr file(
@@ -79,7 +81,8 @@ class OrcRowReader : public ReaderBase {
       const dbcommon::TupleBatchReader& reader = result_->getTupleBatchReader();
       uint64 rowId = offset_ % batch_size_;
       if (rowId < result_->getNumOfRows()) {
-        orcStringEncode(reader, rowId, value);
+        // orcStringEncode(reader, rowId, value);
+        orcExample(reader, rowId, value);
         *key = strings::StrCat(current_work(), ":", offset_++);
         *produced = true;
         return Status::OK();
@@ -150,6 +153,7 @@ class OrcRowReader : public ReaderBase {
           case dbcommon::DATEID:
             core::PutFixed32(value, DT_INT32);
             break;
+          case dbcommon::TIMESTAMPID:
           case dbcommon::TIMEID:
             core::PutFixed32(value, DT_INT64);
             break;
@@ -172,10 +176,156 @@ class OrcRowReader : public ReaderBase {
 
         uint64_t len;
         bool isNull;
-        const char* data = reader[i]->read(rowId, &len, &isNull);
-        core::PutFixed64(value, len);
-        value->append(data, len);
+        if (kind == dbcommon::TIMESTAMPID) {
+          len = sizeof(int64_t);
+          const char* data =
+              static_cast<dbcommon::TimestampVector*>(reader[i].get())
+                  ->readValue(rowId, &isNull);
+          core::PutFixed64(value, len);
+          value->append(data, len);
+        } else {
+          const char* data = reader[i]->read(rowId, &len, &isNull);
+          core::PutFixed64(value, len);
+          value->append(data, len);
+        }
       }
+    }
+  }
+
+  void AddInt64Feature(Features* features, string key, int64_t value) {
+    Feature feature;
+    feature.mutable_int64_list()->add_value(value);
+    auto map = features->mutable_feature();
+    (*map)[key] = feature;
+  }
+
+  void AddFloatFeature(Features* features, string key, float value) {
+    Feature feature;
+    feature.mutable_float_list()->add_value(value);
+    auto map = features->mutable_feature();
+    (*map)[key] = feature;
+  }
+
+  void AddBytesFeature(Features* features, string key, string value) {
+    Feature feature;
+    feature.mutable_bytes_list()->add_value(value);
+    auto map = features->mutable_feature();
+    (*map)[key] = feature;
+  }
+
+  void orcExample(const dbcommon::TupleBatchReader& reader, uint64_t rowId,
+                  string* value) {
+    if (result_ != nullptr) {
+      Example example;
+      Features* features = example.mutable_features();
+      uint64_t colCount = result_->getNumOfColumns();
+      for (uint64_t i = 0; i < colCount; i++) {
+        auto kind = reader[i]->getTypeKind();
+        uint64_t len;
+        bool isNull;
+        switch (kind) {
+            // integer
+          case dbcommon::BOOLEANID: {
+            bool data;
+            const char* databuf = reader[i]->read(rowId, &len, &isNull);
+            memcpy(&data, databuf, sizeof(bool));
+            string key = strings::StrCat("key", i);
+            AddInt64Feature(features, key, static_cast<int64_t>(data));
+            break;
+          }
+          case dbcommon::TINYINTID: {
+            int8_t data;
+            const char* databuf = reader[i]->read(rowId, &len, &isNull);
+            memcpy(&data, databuf, sizeof(int8_t));
+            string key = strings::StrCat("key", i);
+            AddInt64Feature(features, key, static_cast<int64_t>(data));
+            break;
+          }
+          case dbcommon::SMALLINTID: {
+            int16_t data;
+            const char* databuf = reader[i]->read(rowId, &len, &isNull);
+            memcpy(&data, databuf, sizeof(int16_t));
+            string key = strings::StrCat("key", i);
+            AddInt64Feature(features, key, static_cast<int64_t>(data));
+            break;
+          }
+          case dbcommon::INTID: {
+            int32_t data;
+            const char* databuf = reader[i]->read(rowId, &len, &isNull);
+            memcpy(&data, databuf, sizeof(int32_t));
+            string key = strings::StrCat("key", i);
+            AddInt64Feature(features, key, static_cast<int64_t>(data));
+            break;
+          }
+          case dbcommon::BIGINTID: {
+            int64_t data;
+            const char* databuf = reader[i]->read(rowId, &len, &isNull);
+            memcpy(&data, databuf, sizeof(int64_t));
+            string key = strings::StrCat("key", i);
+            AddInt64Feature(features, key, data);
+            break;
+          }
+          case dbcommon::DATEID: {
+            int32_t data;
+            const char* databuf = reader[i]->read(rowId, &len, &isNull);
+            memcpy(&data, databuf, sizeof(int32_t));
+            string key = strings::StrCat("key", i);
+            AddInt64Feature(features, key, static_cast<int64_t>(data));
+            break;
+          }
+          case dbcommon::TIMESTAMPID: {
+            int64_t data;
+            const char* databuf =
+                static_cast<dbcommon::TimestampVector*>(reader[i].get())
+                    ->readValue(rowId, &isNull);
+            memcpy(&data, databuf, sizeof(int64_t));
+            string key = strings::StrCat("key", i);
+            AddInt64Feature(features, key, data);
+            break;
+          }
+          case dbcommon::TIMEID: {
+            int64_t data;
+            const char* databuf = reader[i]->read(rowId, &len, &isNull);
+            memcpy(&data, databuf, sizeof(int64_t));
+            string key = strings::StrCat("key", i);
+            AddInt64Feature(features, key, data);
+            break;
+          }
+            // float
+          case dbcommon::FLOATID: {
+            float data;
+            const char* databuf = reader[i]->read(rowId, &len, &isNull);
+            memcpy(&data, databuf, sizeof(float));
+            string key = strings::StrCat("key", i);
+            AddFloatFeature(features, key, data);
+            break;
+          }
+          case dbcommon::DOUBLEID: {
+            double data;
+            const char* databuf = reader[i]->read(rowId, &len, &isNull);
+            memcpy(&data, databuf, sizeof(double));
+            string key = strings::StrCat("key", i);
+            AddFloatFeature(features, key, static_cast<float>(data));
+            break;
+          }
+            // string
+          case dbcommon::STRINGID:
+          case dbcommon::VARCHARID:
+          case dbcommon::CHARID: {
+            const char* databuf = reader[i]->read(rowId, &len, &isNull);
+            string key = strings::StrCat("key", i);
+            string value;
+            value.append(databuf, len);
+            AddBytesFeature(features, key, value);
+            break;
+          }
+
+          default:
+            std::cout << "Can not encode type!" << std::endl;
+            continue;
+        }
+      }
+      *value = example.SerializeAsString();
     }
   }
 
