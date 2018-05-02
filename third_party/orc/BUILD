@@ -4,4 +4,8 @@ cc_library(
     name = "orc",
     visibility = ["//visibility:public"],
     deps = ["@orc//:orc_library"],
+    linkopts = [
+        "-lpthread",
+        "-lc++",
+    ],
 )
