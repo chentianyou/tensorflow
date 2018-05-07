@@ -91,7 +91,19 @@ new_http_archive(
 )
 
 new_local_repository(
-    name = "orc",
+    name = "hornet_dep",
     path = "/opt/dependency/package",
-    build_file = "//third_party/orc:orc.BUILD"
+    build_file = "//third_party/hornet_dep:hornet_dep.BUILD"
+)
+
+new_local_repository(
+    name = "hdfs3",
+    path = "/home/gpadmin/libhdfs3",
+    build_file = "//third_party/hdfs3:hdfs3.BUILD"
+)
+
+new_local_repository(
+    name = "hornet",
+    path = "/home/gpadmin/hornet",
+    build_file = "//third_party/hornet:hornet.BUILD"
 )

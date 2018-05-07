@@ -2363,7 +2363,13 @@ tf_kernel_library(
 tf_kernel_library(
     name = "orc_file_read_op",
     prefix = "orc_file_read_op",
-    deps = IO_DEPS + ["//third_party/orc:orc"],
+    deps = IO_DEPS + [
+        "@hornet//:storage",
+        "@hornet//:dbcommon",
+    ],
+    linkopts = [
+        "-lc++",
+    ],
 )
 
 tf_cc_tests(
@@ -3651,7 +3657,13 @@ tf_kernel_library(
 tf_kernel_library(
     name = "decode_orc_op",
     prefix = "decode_orc_op",
-    deps = PARSING_DEPS + ["//third_party/orc:orc"],
+    deps = PARSING_DEPS + [
+        "@hornet//:storage",
+        "@hornet//:dbcommon",
+    ],
+    linkopts = [
+        "-lc++",
+    ]
 )
 
 tf_kernel_library(

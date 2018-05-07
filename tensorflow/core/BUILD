@@ -1607,7 +1607,6 @@ cc_library(
         "@snappy",
         "@zlib_archive//:zlib",
         "@protobuf_archive//:protobuf",
-        "//third_party/orc:orc",
     ] + tf_protos_all_impl() + tf_protos_grappler_impl(),
 )
 
