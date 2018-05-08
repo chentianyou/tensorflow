@@ -1,10 +1,10 @@
 # https://docs.bazel.build/versions/master/be/c-cpp.html#cc_library
 
-load(
-    "@org_tensorflow//tensorflow/core:platform/default/build_config.bzl",
-    "tf_proto_library",
-    "tf_proto_library_cc",
-)
+# load(
+#     "@org_tensorflow//tensorflow/core:platform/default/build_config.bzl",
+#     "tf_proto_library",
+#     "tf_proto_library_cc",
+# )
 
 HORNET_COPTS=[
     "-g",
@@ -95,48 +95,56 @@ cc_library(
         "@zlib_archive//:zlib",
     ],
     copts = HORNET_COPTS,
+    linkopts = [
+        "-lpthread",
+        "-lc++",
+    ],
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "univplan",
     srcs = glob([
+        "univplan/build/src/univplan/**/*.h",
+        "univplan/build/src/univplan/**/*.cc",
         "univplan/src/univplan/**/*.h",
         "univplan/src/univplan/**/*.cc",
     ]),
     hdrs = glob([
         "univplan/src/univplan/**/*.h",
     ]),
-    includes = ["univplan/src"],
+    includes = [
+        "univplan/src",
+        "univplan/build/src",
+    ],
     deps = [
-        ":protos_univplan_cc",
-        ":dbcommon"
+        # ":protos_plan_expr_cc",
+        # ":protos_plan_catalog_cc",
+        # ":protos_plan_cc",
+        ":dbcommon",
+        "@protobuf_archive//:protobuf",
     ],
     copts = HORNET_COPTS,
     visibility = ["//visibility:public"],
 )
 
-UNIVPLAN_PROTO_SRCS=[
-    "univplan/src/univplan/proto/universal-plan-catalog.proto",
-    "univplan/src/univplan/proto/universal-plan-expr.proto",
-    "univplan/src/univplan/proto/universal-plan.proto",
-]
-
-tf_proto_library(
-    name = "protos_univplan",
-    srcs = UNIVPLAN_PROTO_SRCS,
-    cc_api_version = 2,
-    default_header = True,
-    go_api_version = 2,
-    j2objc_api_version = 1,
-    java_api_version = 2,
-    js_api_version = 2,
-    visibility = ["//visibility:public"],
-)
+# tf_proto_library_cc(
+#     name = "protos_plan",
+#     srcs = [
+#         "univplan/src/univplan/proto/universal-plan.proto",
+#         "univplan/src/univplan/proto/universal-plan-expr.proto",
+#         "univplan/src/univplan/proto/universal-plan-catalog.proto",
+#     ],
+#     include = "univplan/src",
+#     default_header = True,
+#     visibility = ["//visibility:public"],
+# )
 
 cc_library(
     name = "rpc",
     srcs = glob([
+        "rpc/build/src/rpc/**/*.h",
+        "rpc/build/src/rpc/**/*.cc",
         "rpc/src/rpc/**/*.h",
         "rpc/src/rpc/**/*.cc",
     ]),
@@ -145,28 +153,34 @@ cc_library(
     ]),
     deps = [
         ":dbcommon",
-        ":protos_rpc_cc",
+        # ":protos_rpc_cc",
+        "@protobuf_archive//:protobuf",
     ],
     includes =[
         "rpc/src",
+        "rpc/build/src",
     ],
     copts = HORNET_COPTS,
+    linkopts = [
+        "-lpthread",
+        "-lc++",
+    ],
     visibility = ["//visibility:public"],
 )
 
-tf_proto_library(
-    name = "protos_rpc",
-    srcs = [
-        "rpc/src/rpc/proto/myrpc.proto"
-    ],
-    cc_api_version = 2,
-    default_header = True,
-    go_api_version = 2,
-    j2objc_api_version = 1,
-    java_api_version = 2,
-    js_api_version = 2,
-    visibility = ["//visibility:public"],
-)
+# tf_proto_library(
+#     name = "protos_rpc",
+#     srcs = [
+#         "rpc/src/rpc/proto/myrpc.proto"
+#     ],
+#     cc_api_version = 2,
+#     default_header = True,
+#     go_api_version = 2,
+#     j2objc_api_version = 1,
+#     java_api_version = 2,
+#     js_api_version = 2,
+#     visibility = ["//visibility:public"],
+# )
 
 #magma-clien
 cc_library(
@@ -187,36 +201,42 @@ cc_library(
         ":dbcommon",
         # ":protos_magma_cc",
         "@hornet_dep//:glog",
-        "@grpc//:grpc++",
+        # "@grpc//:grpc++",
         "@protobuf_archive//:protobuf",
     ],
     includes = [
         "kv/src"
     ],
     copts = HORNET_COPTS,
+    linkopts = [
+        "-lpthread",
+        "-lc++",
+    ],
     visibility = ["//visibility:public"],
 )
 
-MAGMA_PROTO_SRC = [
-    "kv/src/kv/client/common/batchrpc/protos/batchrpc.proto",
-    "kv/src/kv/client/common/coord/protos/kvservice.proto",
-]
+# MAGMA_PROTO_SRC = [
+#     "kv/src/kv/client/common/batchrpc/protos/batchrpc.proto",
+#     "kv/src/kv/client/common/coord/protos/kvservice.proto",
+# ]
 
-tf_proto_library(
-    name = "protos_magma",
-    srcs = MAGMA_PROTO_SRC,
-    cc_api_version = 2,
-    default_header = True,
-    go_api_version = 2,
-    j2objc_api_version = 1,
-    java_api_version = 2,
-    js_api_version = 2,
-    visibility = ["//visibility:public"],
-)
+# tf_proto_library(
+#     name = "protos_magma",
+#     srcs = MAGMA_PROTO_SRC,
+#     cc_api_version = 2,
+#     default_header = True,
+#     go_api_version = 2,
+#     j2objc_api_version = 1,
+#     java_api_version = 2,
+#     js_api_version = 2,
+#     visibility = ["//visibility:public"],
+# )
 
 cc_library(
     name = "storage",
     srcs = glob([
+        "storage/build/src/storage/**/*.h",
+        "storage/build/src/storage/**/*.cc",
         "storage/src/storage/**/*.h",
         "storage/src/storage/**/*.cc",
     ]),
@@ -236,7 +256,14 @@ cc_library(
         "@protobuf_archive//:protobuf",
         "@jsoncpp_git//:jsoncpp",
     ],
-    includes = ["storage/src"],
+    includes = [
+        "storage/src",
+        "storage/build/src",
+    ],
     copts = HORNET_COPTS,
+    linkopts = [
+        "-lpthread",
+        "-lc++",
+    ],
     visibility = ["//visibility:public"],
 )

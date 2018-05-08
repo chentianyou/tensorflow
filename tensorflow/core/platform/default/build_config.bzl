@@ -213,7 +213,7 @@ def cc_proto_library(
       **kargs)
 
 def tf_proto_library_cc(name, srcs = [], has_services = None,
-                        protodeps = [],
+                        protodeps = [], include = None,
                         visibility = [], testonly = 0,
                         cc_libs = [],
                         cc_stubby_versions = None,
@@ -238,6 +238,7 @@ def tf_proto_library_cc(name, srcs = [], has_services = None,
   cc_proto_library(
       name = name + "_cc",
       srcs = srcs,
+      include = include,
       deps = tf_deps(protodeps, "_cc") + ["@protobuf_archive//:cc_wkt_protos"],
       cc_libs = cc_libs + if_static(
           ["@protobuf_archive//:protobuf"],

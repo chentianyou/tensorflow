@@ -549,6 +549,19 @@ cc_library(
         ":lib",
         ":protos_all_cc",
     ],
+    copts=[
+        "-g",
+        "-fno-limit-debug-info",
+        "-fno-omit-frame-pointer",
+        "-fno-strict-aliasing",
+        "-mavx",
+        "-mno-avx2",
+        "-DAVX_OPT",
+        "-std=c++11",
+        "-Wno-deprecated-register",
+        "-stdlib=libc++",
+        "-O3",
+    ],
 )
 
 cc_library(

@@ -2270,6 +2270,20 @@ cc_library(
     ],
 )
 
+READER_OPTS = [
+        "-g",
+        "-fno-limit-debug-info",
+        "-fno-omit-frame-pointer",
+        "-fno-strict-aliasing",
+        "-mavx",
+        "-mno-avx2",
+        "-DAVX_OPT",
+        "-std=c++11",
+        "-Wno-deprecated-register",
+        "-stdlib=libc++",
+        "-O3",
+    ]
+
 IO_DEPS = [
     ":ops_util",
     "//tensorflow/core:framework",
@@ -2285,12 +2299,14 @@ tf_kernel_library(
     name = "fixed_length_record_reader_op",
     prefix = "fixed_length_record_reader_op",
     deps = IO_DEPS,
+    copts = READER_OPTS,
 )
 
 tf_kernel_library(
     name = "identity_reader_op",
     prefix = "identity_reader_op",
     deps = IO_DEPS,
+    copts = READER_OPTS,
 )
 
 tf_kernel_library(
@@ -2299,18 +2315,21 @@ tf_kernel_library(
     deps = IO_DEPS + [
         "@lmdb",
     ],
+    copts = READER_OPTS,
 )
 
 tf_kernel_library(
     name = "matching_files_op",
     prefix = "matching_files_op",
     deps = IO_DEPS,
+    copts = READER_OPTS,
 )
 
 tf_kernel_library(
     name = "reader_ops",
     prefix = "reader_ops",
     deps = IO_DEPS,
+    copts = READER_OPTS,
 )
 
 SAVE_RESTORE_DEPS = [
@@ -2346,18 +2365,21 @@ tf_kernel_library(
     name = "text_line_reader_op",
     prefix = "text_line_reader_op",
     deps = IO_DEPS,
+    copts = READER_OPTS,
 )
 
 tf_kernel_library(
     name = "tf_record_reader_op",
     prefix = "tf_record_reader_op",
     deps = IO_DEPS,
+    copts = READER_OPTS,
 )
 
 tf_kernel_library(
     name = "whole_file_read_ops",
     prefix = "whole_file_read_ops",
     deps = IO_DEPS,
+    copts = READER_OPTS,
 )
 
 tf_kernel_library(
@@ -2367,9 +2389,11 @@ tf_kernel_library(
         "@hornet//:storage",
         "@hornet//:dbcommon",
     ],
-    linkopts = [
-        "-lc++",
-    ],
+    copts = READER_OPTS,
+    # linkopts = [
+    #     "-lpthread",
+    #     "-lc++",
+    # ],
 )
 
 tf_cc_tests(
@@ -3657,13 +3681,7 @@ tf_kernel_library(
 tf_kernel_library(
     name = "decode_orc_op",
     prefix = "decode_orc_op",
-    deps = PARSING_DEPS + [
-        "@hornet//:storage",
-        "@hornet//:dbcommon",
-    ],
-    linkopts = [
-        "-lc++",
-    ]
+    deps = PARSING_DEPS,
 )
 
 tf_kernel_library(
