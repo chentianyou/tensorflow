@@ -11,9 +11,9 @@ git clone -b tf-dependency https://github.com/oushu-io/hornet.git ~
 cd ~/hornet
 make release
 
-HORNET_PATH=`pwd`
-sed -i 's?import "univplan/proto/universal-plan-catalog.proto";?import "univplan/src/univplan/proto/universal-plan-catalog.proto";?g' $HORNET_PATH/univplan/src/univplan/proto/universal-plan.proto
-sed -i 's?import "univplan/proto/universal-plan-expr.proto";?import "univplan/src/univplan/proto/universal-plan-expr.proto";?g' $HORNET_PATH/univplan/src/univplan/proto/universal-plan.proto
+# HORNET_PATH=`pwd`
+# sed -i 's?import "univplan/proto/universal-plan-catalog.proto";?import "univplan/src/univplan/proto/universal-plan-catalog.proto";?g' $HORNET_PATH/univplan/src/univplan/proto/universal-plan.proto
+# sed -i 's?import "univplan/proto/universal-plan-expr.proto";?import "univplan/src/univplan/proto/universal-plan-expr.proto";?g' $HORNET_PATH/univplan/src/univplan/proto/universal-plan.proto
 
 cd ~/tensorflow
 parameter="//tensorflow/tools/pip_package:build_pip_package --compilation_mode=dbg --sandbox_debug"

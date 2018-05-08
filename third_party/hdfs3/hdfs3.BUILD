@@ -33,6 +33,10 @@ cc_library(
         "build/src",
         "src",
     ],
+    copts = [
+        "-Dprivate=public",
+        "-Dprotected=public",
+    ],
     deps = [
         # ":protos_all_cc",
         "@protobuf_archive//:protobuf",
