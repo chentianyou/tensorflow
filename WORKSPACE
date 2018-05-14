@@ -98,12 +98,12 @@ new_local_repository(
 
 new_local_repository(
     name = "hdfs3",
-    path = "/home/gpadmin/libhdfs3",
+    path = "/opt/dependency/libhdfs3",
     build_file = "//third_party/hdfs3:hdfs3.BUILD"
 )
 
 new_local_repository(
     name = "hornet",
-    path = "/home/gpadmin/hornet",
+    path = "/opt/dependency/hornet",
     build_file = "//third_party/hornet:hornet.BUILD"
 )

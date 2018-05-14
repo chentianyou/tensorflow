@@ -1,8 +1,49 @@
 exports_files(["LICENSE"])
 
+cc_library(
+    name = "dbcommon",
+    srcs= [
+        "lib/libdbcommon.so"
+    ],
+    hdrs = glob([
+        "include/dbcommon/**/*.h"
+    ]),
+    includes = [
+        "include",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "storage",
+    srcs= [
+        "lib/libstorage.so"
+    ],
+    hdrs = glob([
+        "include/storage/**/*.h"
+    ]),
+
+    includes = [
+        "include",
+    ],
+    visibility = ["//visibility:public"],
+)
+
 ##############################
 # third_party
 ##############################
+#json
+cc_library(
+    name = "json",
+    srcs = glob([
+        "lib/libjsoncpp.a",
+    ]),
+    hdrs = glob([
+        "include/json/*.h",
+    ]),
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+)
 
 #lz4
 cc_library(
@@ -33,10 +74,10 @@ cc_library(
         ":gflags"
     ],
     includes = ["include"],
-    linkopts = [
-        "-lpthread",
-        "-lc++",
-    ],
+    # linkopts = [
+    #     "-lpthread",
+    #     "-lc++",
+    # ],
     visibility = ["//visibility:public"],
 )
 

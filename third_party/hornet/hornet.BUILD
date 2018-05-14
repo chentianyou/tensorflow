@@ -1,24 +1,10 @@
 # https://docs.bazel.build/versions/master/be/c-cpp.html#cc_library
 
-# load(
-#     "@org_tensorflow//tensorflow/core:platform/default/build_config.bzl",
-#     "tf_proto_library",
-#     "tf_proto_library_cc",
-# )
-
-HORNET_COPTS=[
-    "-g",
-    "-fno-limit-debug-info",
-    "-fno-omit-frame-pointer",
-    "-fno-strict-aliasing",
-    "-mavx",
-    "-mno-avx2",
-    "-DAVX_OPT",
-    "-std=c++11",
-    "-Wno-deprecated-register",
-    "-stdlib=libc++",
-    "-O3",
-]
+load(
+    "@org_tensorflow//tensorflow/core:platform/default/build_config.bzl",
+    "tf_proto_library",
+    "tf_proto_library_cc",
+)
 
 cc_library(
     name = "dbcommon",
@@ -94,19 +80,12 @@ cc_library(
         "@hdfs3//:hdfs3",
         "@zlib_archive//:zlib",
     ],
-    copts = HORNET_COPTS,
-    linkopts = [
-        "-lpthread",
-        "-lc++",
-    ],
     visibility = ["//visibility:public"],
 )
 
 cc_library(
     name = "univplan",
     srcs = glob([
-        "univplan/build/src/univplan/**/*.h",
-        "univplan/build/src/univplan/**/*.cc",
         "univplan/src/univplan/**/*.h",
         "univplan/src/univplan/**/*.cc",
     ]),
@@ -118,33 +97,28 @@ cc_library(
         "univplan/build/src",
     ],
     deps = [
-        # ":protos_plan_expr_cc",
-        # ":protos_plan_catalog_cc",
-        # ":protos_plan_cc",
+        ":protos_plan_cc_impl",
         ":dbcommon",
         "@protobuf_archive//:protobuf",
     ],
-    copts = HORNET_COPTS,
     visibility = ["//visibility:public"],
 )
 
-# tf_proto_library_cc(
-#     name = "protos_plan",
-#     srcs = [
-#         "univplan/src/univplan/proto/universal-plan.proto",
-#         "univplan/src/univplan/proto/universal-plan-expr.proto",
-#         "univplan/src/univplan/proto/universal-plan-catalog.proto",
-#     ],
-#     include = "univplan/src",
-#     default_header = True,
-#     visibility = ["//visibility:public"],
-# )
+tf_proto_library_cc(
+    name = "protos_plan",
+    srcs = [
+        "univplan/src/univplan/proto/universal-plan.proto",
+        "univplan/src/univplan/proto/universal-plan-expr.proto",
+        "univplan/src/univplan/proto/universal-plan-catalog.proto",
+    ],
+    include = "univplan/src",
+    default_header = True,
+    visibility = ["//visibility:public"],
+)
 
 cc_library(
     name = "rpc",
     srcs = glob([
-        "rpc/build/src/rpc/**/*.h",
-        "rpc/build/src/rpc/**/*.cc",
         "rpc/src/rpc/**/*.h",
         "rpc/src/rpc/**/*.cc",
     ]),
@@ -153,34 +127,26 @@ cc_library(
     ]),
     deps = [
         ":dbcommon",
-        # ":protos_rpc_cc",
+        ":protos_rpc_cc_impl",
         "@protobuf_archive//:protobuf",
     ],
     includes =[
         "rpc/src",
         "rpc/build/src",
     ],
-    copts = HORNET_COPTS,
-    linkopts = [
-        "-lpthread",
-        "-lc++",
-    ],
     visibility = ["//visibility:public"],
 )
 
-# tf_proto_library(
-#     name = "protos_rpc",
-#     srcs = [
-#         "rpc/src/rpc/proto/myrpc.proto"
-#     ],
-#     cc_api_version = 2,
-#     default_header = True,
-#     go_api_version = 2,
-#     j2objc_api_version = 1,
-#     java_api_version = 2,
-#     js_api_version = 2,
-#     visibility = ["//visibility:public"],
-# )
+tf_proto_library_cc(
+    name = "protos_rpc",
+    srcs = [
+        "rpc/src/rpc/proto/myrpc.proto",
+    ],
+    include = "rpc/src",
+    default_header = True,
+    cc_grpc_version = 1,
+    visibility = ["//visibility:public"],
+)
 
 #magma-clien
 cc_library(
@@ -199,44 +165,37 @@ cc_library(
         ":rpc",
         ":univplan",
         ":dbcommon",
-        # ":protos_magma_cc",
+        ":protos_magma_cc_impl",
         "@hornet_dep//:glog",
-        # "@grpc//:grpc++",
         "@protobuf_archive//:protobuf",
     ],
     includes = [
-        "kv/src"
+        "kv/src",
     ],
-    copts = HORNET_COPTS,
     linkopts = [
-        "-lpthread",
-        "-lc++",
+        "-luuid",
     ],
+    # alwayslink = 1,
     visibility = ["//visibility:public"],
 )
 
-# MAGMA_PROTO_SRC = [
-#     "kv/src/kv/client/common/batchrpc/protos/batchrpc.proto",
-#     "kv/src/kv/client/common/coord/protos/kvservice.proto",
-# ]
+MAGMA_PROTO_SRC = [
+    "kv/src/kv/client/common/batchrpc/protos/batchrpc.proto",
+    "kv/src/kv/client/common/coord/protos/kvservice.proto",
+]
 
-# tf_proto_library(
-#     name = "protos_magma",
-#     srcs = MAGMA_PROTO_SRC,
-#     cc_api_version = 2,
-#     default_header = True,
-#     go_api_version = 2,
-#     j2objc_api_version = 1,
-#     java_api_version = 2,
-#     js_api_version = 2,
-#     visibility = ["//visibility:public"],
-# )
+tf_proto_library_cc(
+    name = "protos_magma",
+    srcs = MAGMA_PROTO_SRC,
+    include = "kv/src",
+    default_header = True,
+    cc_grpc_version = 1,
+    visibility = ["//visibility:public"],
+)
 
 cc_library(
     name = "storage",
     srcs = glob([
-        "storage/build/src/storage/**/*.h",
-        "storage/build/src/storage/**/*.cc",
         "storage/src/storage/**/*.h",
         "storage/src/storage/**/*.cc",
     ]),
@@ -247,6 +206,7 @@ cc_library(
         ":kv-client",
         ":univplan",
         ":dbcommon",
+        ":protos_orc_cc_impl",
         "@hdfs3//:hdfs3",
         "@hornet_dep//:lz4",
         "@hornet_dep//:glog",
@@ -260,10 +220,19 @@ cc_library(
         "storage/src",
         "storage/build/src",
     ],
-    copts = HORNET_COPTS,
     linkopts = [
-        "-lpthread",
-        "-lc++",
+        "-luuid",
     ],
+    # alwayslink = 1,
+    visibility = ["//visibility:public"],
+)
+
+tf_proto_library_cc(
+    name = "protos_orc",
+    srcs = [
+        "storage/src/storage/format/orc/orc_proto.proto"
+    ],
+    include = "storage/src",
+    default_header = True,
     visibility = ["//visibility:public"],
 )

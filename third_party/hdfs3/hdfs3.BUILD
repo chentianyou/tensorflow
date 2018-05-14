@@ -1,33 +1,35 @@
 # https://docs.bazel.build/versions/master/be/c-cpp.html#cc_library
 
-# load(
-#     "@org_tensorflow//tensorflow/core:platform/default/build_config.bzl",
-#     "tf_proto_library",
-#     "tf_proto_library_cc",
-# )
+load(
+    "@org_tensorflow//tensorflow/core:platform/default/build_config.bzl",
+    "tf_proto_library",
+    "tf_proto_library_cc",
+)
 
 cc_library(
     name = "hdfs3",
     srcs = glob([
         "src/**/*.cpp",
         "src/**/*.h",
-        "build/src/**/*.h",
-        "build/src/**/*.cc",
+        # "build/src/**/*.h",
+        # "build/src/**/*.cc",
+        "build/src/platform.h",
     ]),
     hdrs = glob([
-        "BlockLocation.h",
-        "DirectoryIterator.h",
-        "FileStatus.h",
-        "FileSystem.h",
-        "FileSystemStats.h",
-        "hdfs.h",
-        "InputStream.h",
-        "OutputStream.h",
-        "Permission.h",
-        "Exception.h",
-        "XmlConfig.h",
+        "src/client/BlockLocation.h",
+        "src/client/DirectoryIterator.h",
+        "src/client/FileStatus.h",
+        "src/client/FileSystem.h",
+        "src/client/FileSystemStats.h",
+        "src/client/hdfs.h",
+        "src/client/InputStream.h",
+        "src/client/OutputStream.h",
+        "src/client/Permission.h",
+        "src/common/Exception.h",
+        "src/common/XmlConfig.h",
     ]),
     includes = [
+        "src/client",
         "src/common",
         "src/proto",
         "build/src",
@@ -38,36 +40,33 @@ cc_library(
         "-Dprotected=public",
     ],
     deps = [
-        # ":protos_all_cc",
+        ":protos_all_cc_impl",
         "@protobuf_archive//:protobuf",
-        "@hornet_dep//:libxml2"
+        "@hornet_dep//:libxml2",
+        "@hornet_dep//:gsasl",
     ],
     linkopts = [
-        "-lpthread",
-        "-lc++",
+        "-lkrb5",
     ],
     visibility = ["//visibility:public"],
 )
 
-# HDFS_PROTO_SRCS=[
-#     "src/proto/ProtobufRpcEngine.proto",
-#     "src/proto/datatransfer.proto",
-#     "src/proto/RpcHeader.proto",
-#     "src/proto/IpcConnectionContext.proto",
-#     "src/proto/ClientNamenodeProtocol.proto",
-#     "src/proto/ClientDatanodeProtocol.proto",
-#     "src/proto/Security.proto",
-#     "src/proto/hdfs.proto",
-# ]
+HDFS_PROTO_SRCS=[
+    "src/proto/ProtobufRpcEngine.proto",
+    "src/proto/datatransfer.proto",
+    "src/proto/RpcHeader.proto",
+    "src/proto/IpcConnectionContext.proto",
+    "src/proto/ClientNamenodeProtocol.proto",
+    "src/proto/ClientDatanodeProtocol.proto",
+    "src/proto/Security.proto",
+    "src/proto/hdfs.proto",
+]
 
-# tf_proto_library(
-#     name = "protos_all",
-#     srcs = HDFS_PROTO_SRCS,
-#     cc_api_version = 2,
-#     default_header = True,
-#     go_api_version = 2,
-#     j2objc_api_version = 1,
-#     java_api_version = 2,
-#     js_api_version = 2,
-#     visibility = ["//visibility:public"],
-# )
+tf_proto_library_cc(
+    name = "protos_all",
+    srcs = HDFS_PROTO_SRCS,
+    include = "src/proto",
+    default_header = True,
+    # cc_grpc_version = 1,
+    visibility = ["//visibility:public"],
+)
