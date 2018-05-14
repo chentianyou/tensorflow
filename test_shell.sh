@@ -9,13 +9,7 @@ if [ "$1" != "debug" ];then
     parameter="--config=opt //tensorflow/tools/pip_package:build_pip_package"
 fi
 
-COPTS="--cxxopt=-stdlib=libc++ --linkopt=-lc++"
-
-# --cxxopt=-stdlib=libc++ \
-# COPTS="--cxxopt=-stdlib=libc++"
-# --verbose_failures
-# GCC using libc++
-#  bazel build -s --cxxopt=-nostdinc++ --cxxopt=-I/usr/local/include/c++/v1/ --linkopt=-nodefaultlibs --linkopt=-L/usr/local/lib --linkopt=-lc++ --linkopt=-lc++abi --linkopt=-lm --linkopt=-lc --linkopt=-lgcc_s --linkopt=-lgcc //test:size_test
+COPTS="--cxxopt=-std=c++11 --cxxopt=-stdlib=libc++ --linkopt=-lc++"
 
 bazel build -s  --toolchain_resolution_debug $COPTS $parameter
 if [ $? != 0 ];then
