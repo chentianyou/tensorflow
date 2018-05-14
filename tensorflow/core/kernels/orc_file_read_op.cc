@@ -15,8 +15,7 @@ limitations under the License.
 
 // See docs in ../ops/io_ops.cc.
 #include <memory>
-#include "dbcommon/filesystem/file-system-manager.h"
-#include "storage/format/format.h"
+
 #include "tensorflow/core/example/example.pb.h"
 #include "tensorflow/core/example/feature.pb.h"
 #include "tensorflow/core/framework/reader_base.h"
@@ -26,6 +25,8 @@ limitations under the License.
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/strings/strcat.h"
 #include "tensorflow/core/platform/env.h"
+#include "dbcommon/filesystem/file-system-manager.h"
+#include "storage/format/format.h"
 
 namespace tensorflow {
 class OrcRowReader : public ReaderBase {
