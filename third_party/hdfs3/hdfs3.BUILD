@@ -55,15 +55,15 @@ cc_library(
 )
 
 HDFS_PROTO_SRCS=[
-    "src/proto/ProtobufRpcEngine.proto",
-    "src/proto/datatransfer.proto",
-    "src/proto/RpcHeader.proto",
-    "src/proto/IpcConnectionContext.proto",
-    "src/proto/ClientNamenodeProtocol.proto",
-    "src/proto/ClientDatanodeProtocol.proto",
-    "src/proto/Security.proto",
-    "src/proto/hdfs.proto",
-    "src/proto/encryption.proto",
+    "src/proto-tf/ProtobufRpcEngine.proto",
+    "src/proto-tf/datatransfer.proto",
+    "src/proto-tf/RpcHeader.proto",
+    "src/proto-tf/IpcConnectionContext.proto",
+    "src/proto-tf/ClientNamenodeProtocol.proto",
+    "src/proto-tf/ClientDatanodeProtocol.proto",
+    "src/proto-tf/Security.proto",
+    "src/proto-tf/hdfs.proto",
+    "src/proto-tf/encryption.proto",
 ]
 
 tf_proto_library(

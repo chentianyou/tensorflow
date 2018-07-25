@@ -9,7 +9,11 @@
 # build --linkopt=-lc++
 # build --host_linkopt=-lc++
 set -x
-parameter="-s //tensorflow/tools/pip_package:build_pip_package \
+
+mv /opt/dependency/package/include/json ~/json
+mv /opt/dependency/package/include/univplan ~/univplan
+
+parameter=" //tensorflow/tools/pip_package:build_pip_package \
 --compilation_mode=dbg \
 --sandbox_debug"
 
@@ -19,7 +23,7 @@ if [ "$1" = "release" ];then
     parameter="-s --config=opt //tensorflow/tools/pip_package:build_pip_package"
 fi
 
-bazel build $parameter
+bazel build --jobs=8 $parameter --verbose_failures
 if [ $? != 0 ];then
     exit 1
 fi
@@ -29,3 +33,6 @@ sudo pip3.6 uninstall -y /opt/dependency/tensorflow-1.*
 sudo pip3.6 install /opt/dependency/tensorflow-1.*
 
 python3.6 ./test/test.py
+
+mv ~/json /opt/dependency/package/include/json
+mv ~/univplan /opt/dependency/package/include/univplan
