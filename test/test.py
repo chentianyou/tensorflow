@@ -1,3 +1,4 @@
 import tensorflow as tf
 
-print(tf.__version__)
+with tf.Session() as sess:
+    print(tf.__version__)
