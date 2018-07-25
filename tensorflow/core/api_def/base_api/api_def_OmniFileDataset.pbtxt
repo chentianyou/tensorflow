@@ -1,0 +1,36 @@
+op {
+  graph_op_name: "OmniFileDataset"
+  in_arg {
+    name: "filenames"
+    description: <<END
+A scalar or a vector containing the name(s) of the file(s) to be
+read.
+END
+  }
+  in_arg {
+    name: "data_format_type"
+    description: <<END
+A scalar containing either (i) 1(orc).
+END
+  }
+  in_arg {
+    name: "compression_type"
+    description: <<END
+A scalar containing either (i) the empty string (no
+compression), (ii) "snappy", or (iii) "lz4", default snappy.
+END
+  }
+  in_arg {
+    name: "block_count"
+    description: <<END
+A scalar containing the number of split file.
+END
+  }
+  in_arg {
+    name: "block_index"
+    description: <<END
+A scalar containing the index of split file.
+END
+  }
+  summary: "Creates a dataset that emits the lines of one or more text files."
+}

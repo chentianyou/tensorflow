@@ -118,6 +118,54 @@ class _TFRecordDataset(dataset_ops.Dataset):
     return dtypes.string
 
 
+@tf_export("data.OmniFileDataset")
+class OmniFileDataset(dataset_ops.Dataset):
+  """A `Dataset` comprising lines from one or more text files."""
+
+  def __init__(self, filenames, data_format_type=None, compression_type=None, block_count=None, block_index=None):
+    """Creates a `OmniFileDataset`.
+
+    Args:
+      filenames: A `tf.string` tensor containing one or more filenames.
+      data_format_type: (Optional.) A scalar containing either (i) 1(orc).
+      compression_type: (Optional.) A scalar containing either (i) the empty string (no
+        compression), (ii) "snappy", or (iii) "lz4", default snappy.
+      block_count: (Optional.) A scalar containing the number of split file.
+      block_index: (Optional.) A scalar containing the index of split file.
+    """
+    super(OmniFileDataset, self).__init__()
+    self._filenames = ops.convert_to_tensor(
+        filenames, dtype=dtypes.string, name="filenames")
+    self._data_format_type = convert.optional_param_to_tensor(
+        "data_format_type", data_format_type, 1)
+    self._compression_type = convert.optional_param_to_tensor(
+        "compression_type",
+        compression_type,
+        argument_default="snappy",
+        argument_dtype=dtypes.string)
+    self._block_count = convert.optional_param_to_tensor(
+        "block_count", block_count, 1)
+    self._block_index = convert.optional_param_to_tensor(
+        "block_index", block_index, 0)
+    
+
+  def _as_variant_tensor(self):
+    return gen_dataset_ops.text_line_dataset(
+        self._filenames, self._data_format_type, self._compression_type, self._block_count, self.block_index)
+
+  @property
+  def output_classes(self):
+    return ops.Tensor
+
+  @property
+  def output_shapes(self):
+    return tensor_shape.scalar()
+
+  @property
+  def output_types(self):
+    return dtypes.string
+
+
 class ParallelInterleaveDataset(dataset_ops.InterleaveDataset):
   """A `Dataset` that maps a function over its input and flattens the result."""
 

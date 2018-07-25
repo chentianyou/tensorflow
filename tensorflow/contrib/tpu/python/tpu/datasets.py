@@ -40,11 +40,15 @@ def _TFRecordDataset(filename):
   dataset = readers.TFRecordDataset(filename, buffer_size=buffer_size)
   return dataset
 
+def _OmniFileDataset(filename):
+  dataset = readers.OmniFileDataset(filename, data_format_type=1, compression_type="snappy", block_count=1, block_index=0)
+  return dataset
 
 _FILETYPE_MAP = {
     'tfrecord': _TFRecordDataset,
     'textline': _TextLineDataset,
     'text': _TextLineDataset,
+    'Omni': _OmniFileDataset,
 }
 
 

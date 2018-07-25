@@ -79,3 +79,22 @@ new_http_archive(
         "http://download.tensorflow.org/models/speech_commands_v0.01.zip",
     ],
 )
+
+
+new_local_repository(
+    name = "hornet_dep",
+    path = "/opt/dependency/package",
+    build_file = "//third_party/hornet_dep:hornet_dep.BUILD"
+)
+
+new_local_repository(
+    name = "hdfs3",
+    path = "/opt/dependency/libhdfs3",
+    build_file = "//third_party/hdfs3:hdfs3.BUILD"
+)
+
+new_local_repository(
+    name = "hornet",
+    path = "/opt/dependency/hornet",
+    build_file = "//third_party/hornet:hornet.BUILD"
+)

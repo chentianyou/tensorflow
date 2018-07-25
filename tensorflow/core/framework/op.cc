@@ -18,6 +18,7 @@ limitations under the License.
 #include <algorithm>
 #include <memory>
 #include <vector>
+#include <iostream>
 #include "tensorflow/core/framework/op_kernel.h"
 #include "tensorflow/core/lib/core/errors.h"
 #include "tensorflow/core/lib/gtl/map_util.h"
@@ -182,7 +183,10 @@ bool OpRegistry::MustCallDeferred() const {
   if (initialized_) return false;
   initialized_ = true;
   for (size_t i = 0; i < deferred_.size(); ++i) {
-    TF_QCHECK_OK(RegisterAlreadyLocked(deferred_[i]));
+    std::cout << DebugString(true) << std::endl;
+    Status state = RegisterAlreadyLocked(deferred_[i]);
+    std::cout << state.error_message() << std::endl;
+    TF_QCHECK_OK(state);
   }
   deferred_.clear();
   return true;

@@ -12,7 +12,8 @@ def _get_platform_folder(os_name):
 
 def _download_chromium_clang(repo_ctx, platform_folder, package_version, sha256,
                              out_folder):
-  cds_url = 'https://commondatastorage.googleapis.com/chromium-browser-clang'
+  # cds_url = 'https://commondatastorage.googleapis.com/chromium-browser-clang'
+  cds_url = 'file:///opt/dependency/clang'
   cds_file = 'clang-%s.tgz' % package_version
   cds_full_url = '{0}/{1}/{2}'.format(cds_url, platform_folder, cds_file)
   repo_ctx.download_and_extract(cds_full_url, output=out_folder, sha256=sha256)
