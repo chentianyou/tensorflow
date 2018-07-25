@@ -12,6 +12,8 @@ set -x
 
 mv /opt/dependency/package/include/json ~/json
 mv /opt/dependency/package/include/univplan ~/univplan
+rm /opt/dependency/libhdfs3/build/src/*.pb.h
+rm /opt/dependency/libhdfs3/build/src/*.pb.cc
 
 parameter=" //tensorflow/tools/pip_package:build_pip_package \
 --compilation_mode=dbg \

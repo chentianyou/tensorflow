@@ -11,9 +11,7 @@ cc_library(
     srcs = glob([
         "src/**/*.cpp",
         "src/**/*.h",
-        # "build/src/**/*.h",
-        # "build/src/**/*.cc",
-    ]),
+        "build/src/platform.h",]),
     hdrs = glob([
         "BlockLocation.h",
         "DirectoryIterator.h",
@@ -30,7 +28,6 @@ cc_library(
     includes = [
         "src/proto",
         "src/common",
-        "src/proto",
         "build/src",
         "src",
     ],
