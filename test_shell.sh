@@ -24,6 +24,10 @@ if [ "$1" = "release" ];then
 fi
 
 bazel build --jobs=8 $parameter --verbose_failures
+
+mv ~/json /opt/dependency/package/include/json
+mv ~/univplan /opt/dependency/package/include/univplan
+
 if [ $? != 0 ];then
     exit 1
 fi
@@ -34,5 +38,3 @@ sudo pip3.6 install /opt/dependency/tensorflow-1.*
 
 python3.6 ./test/test.py
 
-mv ~/json /opt/dependency/package/include/json
-mv ~/univplan /opt/dependency/package/include/univplan
