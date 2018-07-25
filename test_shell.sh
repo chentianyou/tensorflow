@@ -24,11 +24,12 @@ if [ "$1" = "release" ];then
 fi
 
 bazel build --jobs=8 $parameter --verbose_failures
+exit_cout=$?
 
 mv ~/json /opt/dependency/package/include/json
 mv ~/univplan /opt/dependency/package/include/univplan
 
-if [ $? != 0 ];then
+if [ $exit_cout != 0 ];then
     exit 1
 fi
 
