@@ -100,3 +100,16 @@ cc_library(
     includes = ["include"],
     visibility = ["//visibility:public"],
 )
+
+# thrift
+cc_library(
+    name = "thrift",
+    srcs = glob([
+        "lib/libthrift.a"
+    ]),
+    hdrs = glob([
+        "include/thrift/**"
+    ]),
+    includes = ["include"],
+    visibility = ["//visibility:public"],
+)
