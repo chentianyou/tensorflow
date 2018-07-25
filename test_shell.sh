@@ -17,7 +17,7 @@ rm /opt/dependency/libhdfs3/build/src/*.pb.cc
 
 sed -i 's#"univplan/proto/universal-plan#"univplan/src/univplan/proto/universal-plan#g' /opt/dependency/hornet/univplan/src/univplan/proto/universal-plan.proto
 
-parameter="-c dbg -c opts //tensorflow/tools/pip_package:build_pip_package \
+parameter="-c dbg -c opt //tensorflow/tools/pip_package:build_pip_package \
 --compilation_mode=dbg \
 --sandbox_debug"
 
