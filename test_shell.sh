@@ -17,14 +17,14 @@ rm /opt/dependency/libhdfs3/build/src/*.pb.cc
 
 sed -i 's#"univplan/proto/universal-plan#"univplan/src/univplan/proto/universal-plan#g' /opt/dependency/hornet/univplan/src/univplan/proto/universal-plan.proto
 
-parameter=" //tensorflow/tools/pip_package:build_pip_package \
+parameter="-c dbg -c opts //tensorflow/tools/pip_package:build_pip_package \
 --compilation_mode=dbg \
 --sandbox_debug"
 
 env_str='LD_LIBRARY_PATH=/opt/dependency/package/lib:/usr/local/lib:/usr/local/lib64:/usr/lib64'
 
 if [ "$1" = "release" ];then
-    parameter="-s --config=opt //tensorflow/tools/pip_package:build_pip_package"
+    parameter="--config=opt //tensorflow/tools/pip_package:build_pip_package"
 fi
 
 bazel build --jobs=8 $parameter --verbose_failures
