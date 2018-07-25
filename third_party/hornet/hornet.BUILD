@@ -57,8 +57,6 @@ cc_library(
         # "univplan/build/src/univplan/**/*.cc",
         "univplan/src/univplan/**/*.h",
         "univplan/src/univplan/**/*.cc",
-        "univplan/src/univplan/proto/*.h",
-        "univplan/src/univplan/proto/*.cc",
     ]),
     includes = [
         "univplan/src",

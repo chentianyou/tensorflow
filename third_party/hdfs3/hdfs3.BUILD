@@ -26,7 +26,7 @@ cc_library(
         "XmlConfig.h",
     ]),
     includes = [
-        "src/proto",
+        "src/proto-tf",
         "src/common",
         "build/src",
         "src",
