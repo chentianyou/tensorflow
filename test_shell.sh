@@ -15,7 +15,7 @@ mv /opt/dependency/package/include/univplan ~/univplan
 rm /opt/dependency/libhdfs3/build/src/*.pb.h
 rm /opt/dependency/libhdfs3/build/src/*.pb.cc
 
-sed -i 's#"univplan/proto/universal-plan#"src/univplan/proto/universal-plan#g' /opt/dependency/hornet/univplan/src/univplan/proto/universal-plan.proto
+sed -i 's#"univplan/proto/universal-plan#"univplan/src/univplan/proto/universal-plan#g' /opt/dependency/hornet/univplan/src/univplan/proto/universal-plan.proto
 
 parameter=" //tensorflow/tools/pip_package:build_pip_package \
 --compilation_mode=dbg \
@@ -32,7 +32,7 @@ exit_cout=$?
 
 mv ~/json /opt/dependency/package/include/json
 mv ~/univplan /opt/dependency/package/include/univplan
-sed -i 's#"src/univplan/proto/universal-plan#"univplan/proto/universal-plan#g' /opt/dependency/hornet/univplan/src/univplan/proto/universal-plan.proto
+sed -i 's#"univplan/src/univplan/proto/universal-plan#"univplan/proto/universal-plan#g' /opt/dependency/hornet/univplan/src/univplan/proto/universal-plan.proto
 
 if [ $exit_cout != 0 ];then
     exit 1
