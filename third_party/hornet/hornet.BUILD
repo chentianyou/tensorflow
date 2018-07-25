@@ -53,8 +53,6 @@ cc_library(
 cc_library(
     name = "univplan",
     srcs = glob([
-        # "univplan/build/src/univplan/**/*.h",
-        # "univplan/build/src/univplan/**/*.cc",
         "univplan/src/univplan/**/*.h",
         "univplan/src/univplan/**/*.cc",
     ]),
@@ -75,9 +73,9 @@ cc_library(
 tf_proto_library(
     name = "protos_plan",
     srcs = [
-        "univplan/src/univplan/proto-tf/universal-plan.proto",
-        "univplan/src/univplan/proto-tf/universal-plan-expr.proto",
-        "univplan/src/univplan/proto-tf/universal-plan-catalog.proto",
+        "univplan/src/univplan/proto/universal-plan.proto",
+        "univplan/src/univplan/proto/universal-plan-expr.proto",
+        "univplan/src/univplan/proto/universal-plan-catalog.proto",
     ],
     cc_api_version = 2,
     default_header = True,
