@@ -183,10 +183,10 @@ bool OpRegistry::MustCallDeferred() const {
   if (initialized_) return false;
   initialized_ = true;
   for (size_t i = 0; i < deferred_.size(); ++i) {
-    std::cout << DebugString(true) << std::endl;
-    Status state = RegisterAlreadyLocked(deferred_[i]);
-    std::cout << state.error_message() << std::endl;
-    TF_QCHECK_OK(state);
+    // std::cout << DebugString(true) << std::endl;
+    // Status state = RegisterAlreadyLocked(deferred_[i]);
+    // std::cout << state.error_message() << std::endl;
+    TF_QCHECK_OK(RegisterAlreadyLocked(deferred_[i]));
   }
   deferred_.clear();
   return true;
