@@ -862,14 +862,14 @@ class ORCFileDatasetOp : public DatasetOpKernel {
         dbcommon::FileSystem* fs = FSManager_.get(fullFileName.c_str());
         if (!fs->exists(path.c_str())) return errors::NotFound(path.c_str());
 
-        std::vector<storage::Input::uptr> files;
-        dbcommon::FileInfo::uptr info = fs->getFileInfo(path.c_str());
-        storage::Input::uptr file(
+        std::vector<std::unique_ptr<storage::Input>> files;
+        std::unique_ptr<dbcommon::FileInfo> info = fs->getFileInfo(path.c_str());
+        std::unique_ptr<dbcommon::FileInfo> file(
             new storage::FileInput(fullFileName.c_str(), info->size));
         files.push_back(std::move(file));
         tasks_ = dataset()->format_->createTasks(files, 1);
         const univplan::UnivPlanScanTask& t = tasks_->Get(0);
-        dataset()->format_->beginScan(string(""), &(t.splits()), nullptr,
+        dataset()->format_->beginScan(&(t.splits()), nullptr,
                                       nullptr, nullptr, false);
         return Status::OK();
       }
