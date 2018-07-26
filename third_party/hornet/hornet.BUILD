@@ -17,6 +17,7 @@ cc_library(
         "dbcommon/src/dbcommon/**/*.h",
         "dbcommon/src/dbcommon/**/*.cc",
         "dbcommon/build/codegen/src/**/*.cc",
+        "dbcommon/build/codegen/src/**/*.cpp",
         "dbcommon/build/codegen/src/**/*.h",],
         exclude=[
             "dbcommon/src/dbcommon/function/typecast-func.cc",
