@@ -3695,7 +3695,6 @@ cc_library(
     deps = [
         ":decode_compressed_op",
         ":decode_csv_op",
-        ":decode_orc_op",
         ":decode_raw_op",
         ":example_parsing_ops",
         ":parse_tensor_op",
@@ -3714,12 +3713,6 @@ PARSING_DEPS = [
 tf_kernel_library(
     name = "decode_csv_op",
     prefix = "decode_csv_op",
-    deps = PARSING_DEPS,
-)
-
-tf_kernel_library(
-    name = "decode_orc_op",
-    prefix = "decode_orc_op",
     deps = PARSING_DEPS,
 )
 
