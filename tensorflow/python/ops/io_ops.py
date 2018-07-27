@@ -30,7 +30,6 @@ See the @{$python/io_ops} guide.
 @@LMDBReader
 @@FixedLengthRecordReader
 @@decode_csv
-@@decode_orc
 @@decode_raw
 @@VarLenFeature
 @@FixedLenFeature
