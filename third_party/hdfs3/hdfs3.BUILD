@@ -30,7 +30,7 @@ cc_library(
     includes = [
         "src/proto-tf",
         "src/common",
-        "src/proto",
+        "src/client",
         "build/src",
         "src",
     ],

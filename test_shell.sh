@@ -67,22 +67,41 @@ find ${TF_DEP}/hornet -name "*.pb.*" | xargs rm -f
 echo "Done"
 
 if [ "$plamtform" = "darwin" ];then
-    sed -i '' 's#"univplan/proto/universal-plan#"univplan/src/univplan/proto/universal-plan#g' ${TF_DEP}/hornet/univplan/src/univplan/proto/universal-plan.proto
+    sed -i '' 's#"univplan/proto/universal-plan#"univplan/src/univplan/proto/universal-plan#g' \
+    ${TF_DEP}/hornet/univplan/src/univplan/proto/universal-plan.proto
+    sed -i '' 's$#include "hdfs/hdfs.h"$#include "hdfs.h"$g' \
+    ${TF_DEP}/hornet/dbcommon/src/dbcommon/filesystem/hdfs/hdfs-file-system.h
 else
-    sed -i 's#"univplan/proto/universal-plan#"univplan/src/univplan/proto/universal-plan#g' ${TF_DEP}/hornet/univplan/src/univplan/proto/universal-plan.proto
+    sed -i 's#"univplan/proto/universal-plan#"univplan/src/univplan/proto/universal-plan#g' \
+    ${TF_DEP}/hornet/univplan/src/univplan/proto/universal-plan.proto
+    sed -i 's$#include "hdfs/hdfs.h"$#include "hdfs.h"$g' \
+    ${TF_DEP}/hornet/dbcommon/src/dbcommon/filesystem/hdfs/hdfs-file-system.h
 fi
 
-parameter="//tensorflow/tools/pip_package:build_pip_package \
---compilation_mode=dbg \
---sandbox_debug"
+parameter="--compilation_mode=dbg --sandbox_debug"
 
-env_str='LD_LIBRARY_PATH=/opt/dependency/package/lib:/usr/local/lib:/usr/local/lib64:/usr/lib64'
-
-if [ "$1" = "release" ];then
-    parameter="--config=opt //tensorflow/tools/pip_package:build_pip_package"
+if [ "$2" = "release" ];then
+    parameter="--config=opt"
 fi
 
-bazel build --jobs=8 $parameter --verbose_failures
+target="//tensorflow/tools/pip_package:build_pip_package"
+
+case $1 in 
+    hdfs)
+        target="@hdfs3//:hdfs3"
+    ;;
+    dbcommon)
+        target="@hornet//:dbcommon"
+    ;;
+    storage)
+        target="@hornet//:storage"
+    ;;
+    *)
+        target="//tensorflow/tools/pip_package:build_pip_package"
+    ;;
+esac
+
+bazel build --jobs=8 $parameter --verbose_failures $target
 
 if [ $? != 0 ];then
     exit 1
