@@ -107,9 +107,10 @@ if [ $? != 0 ];then
     exit 1
 fi
 
-./bazel-bin/tensorflow/tools/pip_package/build_pip_package /opt/dependency
-sudo pip3.6 uninstall -y /opt/dependency/tensorflow-1.*
-sudo pip3.6 install /opt/dependency/tensorflow-1.*
+rm ${TF_DEP}/tensorflow-1.*
+./bazel-bin/tensorflow/tools/pip_package/build_pip_package ${TF_DEP}
+sudo pip3.6 uninstall -y ${TF_DEP}/tensorflow-1.*
+sudo pip3.6 install ${TF_DEP}/tensorflow-1.*
 
 python3.6 ./test/test.py
 

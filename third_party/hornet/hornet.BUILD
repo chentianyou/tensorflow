@@ -62,7 +62,6 @@ cc_library(
     deps = [
         ":protos_plan_cc_impl",
         ":dbcommon",
-        "@protobuf_archive//:protobuf",
     ],
     # alwayslink=1,
     visibility = ["//visibility:public"],
@@ -101,7 +100,6 @@ cc_library(
         "@hornet_dep//:iconv",
         "@snappy//:snappy",
         "@zlib_archive//:zlib",
-        "@protobuf_archive//:protobuf",
         "@jsoncpp_git//:jsoncpp",
     ],
     includes = [
