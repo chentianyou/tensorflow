@@ -1,0 +1,35 @@
+op {
+  graph_op_name: "OmniFileDataset"
+  in_arg {
+    name: "filenames"
+    description: <<END
+A scalar or a vector containing the name(s) of the file(s) to be
+read.
+END
+  }
+  in_arg {
+    name: "block_count"
+    description: <<END
+Number of block to split file.
+END
+  }
+  in_arg {
+    name: "block_index"
+    description: <<END
+Index of block to split file.
+END
+  }
+  in_arg {
+    name: "data_format_type"
+    description: <<END
+Data fromat type, only 1(orc) support yet.
+END
+  }
+  in_arg {
+    name: "compression_type"
+    description: <<END
+A scalar containing either (i) default "snappy", (ii) "lz4", or (iii) "none".
+END
+  }
+  summary: "Creates a dataset that one or more orc files."
+}
