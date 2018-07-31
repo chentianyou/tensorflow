@@ -112,5 +112,5 @@ rm ${TF_DEP}/tensorflow-1.*
 sudo pip3.6 uninstall -y ${TF_DEP}/tensorflow-1.*
 sudo pip3.6 install ${TF_DEP}/tensorflow-1.*
 
-python3.6 ./test/test.py
+python3.6 ./test/orc_dataset_test.py
 
