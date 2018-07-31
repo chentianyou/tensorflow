@@ -60,7 +60,7 @@ class OrcRowReader : public ReaderBase {
     file_split->set_filename(info->name.c_str());
     file_split->set_start(start);
     file_split->set_len(len);
-    format_->beginScan(&(file_splits), nullptr, nullptr, nullptr,
+    format_->beginScan(file_splits_.get(), nullptr, nullptr, nullptr,
                                   false);
     return Status::OK();
   }

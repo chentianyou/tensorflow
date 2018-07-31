@@ -1089,19 +1089,13 @@ class OmniFileDatasetOp : public DatasetOpKernel {
     }
 
     int64 data_format_type = 1;
-    univplan::UNIVPLANFORMATTYPE format_tpye;
     OP_REQUIRES_OK(ctx, ParseScalarArgument<int64>(ctx, "data_format_type",
                                                    &data_format_type));
     OP_REQUIRES(
         ctx, data_format_type == 1,
         errors::InvalidArgument("data_format_type only support orc(1) yet",
                                 data_format_type));
-    switch (data_format_type) {
-      case 1:
-        format_tpye = univplan::UNIVPLANFORMATTYPE::ORC_FORMAT;
-        break;
-    }
-
+    
     string compression_type = "snappy";
     OP_REQUIRES_OK(ctx, ParseScalarArgument<string>(ctx, "compression_type",
                                                     &compression_type));
@@ -1121,7 +1115,7 @@ class OmniFileDatasetOp : public DatasetOpKernel {
         errors::InvalidArgument("block_index must be >=0 and < block_count not",
                                 block_index));
 
-    *output = new Dataset(ctx, std::move(filenames), format_tpye,
+    *output = new Dataset(ctx, std::move(filenames), data_format_type,
                           compression_type, block_count, block_index);
   }
 
@@ -1129,7 +1123,7 @@ class OmniFileDatasetOp : public DatasetOpKernel {
   class Dataset : public GraphDatasetBase {
    public:
     explicit Dataset(OpKernelContext* ctx, std::vector<string> filenames,
-                     univplan::UNIVPLANFORMATTYPE data_format_type,
+                     int data_format_type,
                      const string& compression_type, int block_count,
                      int block_index)
         : GraphDatasetBase(ctx),
@@ -1142,7 +1136,13 @@ class OmniFileDatasetOp : public DatasetOpKernel {
       params_.set("table.options", "{\"compresstype\":\"" + compression_type_ +
                                        "\",\"rlecoder\":\"v2\","
                                        "\"bloomfilter\":\"0\"}");
-      format_ = storage::Format::createFormat(data_format_type_, &params_);
+      univplan::UNIVPLANFORMATTYPE format_tpye;
+      switch (data_format_type) {
+        case 1:
+          format_tpye = univplan::UNIVPLANFORMATTYPE::ORC_FORMAT;
+          break;
+      }
+      format_ = storage::Format::createFormat(format_tpye, &params_);
     }
 
     std::unique_ptr<IteratorBase> MakeIterator(
@@ -1167,7 +1167,7 @@ class OmniFileDatasetOp : public DatasetOpKernel {
    protected:
     Status AsGraphDefInternal(DatasetGraphDefBuilder* b,
                               Node** output) const override {
-       Node* filenames = nullptr;
+      Node* filenames = nullptr;
       TF_RETURN_IF_ERROR(b->AddVector(filenames_, &filenames));
       Node* data_format_type = nullptr;
       TF_RETURN_IF_ERROR(b->AddScalar(data_format_type_, &data_format_type));
@@ -1495,8 +1495,8 @@ class OmniFileDatasetOp : public DatasetOpKernel {
 
     const std::vector<string> filenames_;
     const string compression_type_;
-    const univplan::UNIVPLANFORMATTYPE data_format_type_;
-    const int batch_size_ = 32;
+    int data_format_type_;
+    const int batch_size_ = 64;
     int64 block_count_ = 1;
     int64 block_index_ = 0;
     dbcommon::Parameters params_;

@@ -9,7 +9,7 @@ from sklearn.preprocessing import StandardScaler
 batch_size = 50
 learning_rate = 0.01
 layers = [100, 50, 20]
-num_epochs = 50
+num_epochs = 1
 
 scaler = StandardScaler()
 orc_files = [os.path.join(sys.path[0], "data/W27627B74-3CA6-11E8-A2AB-FE008C60F601")]
