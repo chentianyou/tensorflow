@@ -98,18 +98,18 @@ new_http_archive(
 
 new_local_repository(
     name = "hornet_dep",
-    path = "/opt/dependency/package",
+    path = "/opt/tf-dependency/package",
     build_file = "//third_party/hornet_dep:hornet_dep.BUILD"
 )
 
 new_local_repository(
     name = "hdfs3",
-    path = "/home/gpadmin/libhdfs3",
+    path = "/opt/tf-dependency/libhdfs3",
     build_file = "//third_party/hdfs3:hdfs3.BUILD"
 )
 
 new_local_repository(
     name = "hornet",
-    path = "/home/gpadmin/hornet",
+    path = "/opt/tf-dependency/hornet",
     build_file = "//third_party/hornet:hornet.BUILD"
 )

@@ -778,7 +778,7 @@ class ORCFileDatasetOp : public DatasetOpKernel {
         mutex_lock l(mu_);
         do {
           // We are currently processing a file, so try to read the next record.
-          if (tasks_) {
+          if (file_splits_) {
             Tensor result_tensor(ctx->allocator({}), DT_STRING, {});
             uint64 rowId =
                 offset_[current_file_index_] % dataset()->batch_size_;
@@ -819,7 +819,7 @@ class ORCFileDatasetOp : public DatasetOpKernel {
         TF_RETURN_IF_ERROR(writer->WriteScalar(full_name("current_file_index"),
                                                current_file_index_));
 
-        if (tasks_) {
+        if (file_splits_) {
           TF_RETURN_IF_ERROR(writer->WriteScalar(full_name("offset"),
                                                  offset_[current_file_index_]));
         }
@@ -862,103 +862,25 @@ class ORCFileDatasetOp : public DatasetOpKernel {
         dbcommon::FileSystem* fs = FSManager_.get(fullFileName.c_str());
         if (!fs->exists(path.c_str())) return errors::NotFound(path.c_str());
 
-        std::vector<storage::Input::uptr> files;
-        dbcommon::FileInfo::uptr info = fs->getFileInfo(path.c_str());
-        storage::Input::uptr file(
-            new storage::FileInput(fullFileName.c_str(), info->size));
-        files.push_back(std::move(file));
-        tasks_ = dataset()->format_->createTasks(files, 1);
-        const univplan::UnivPlanScanTask& t = tasks_->Get(0);
-        dataset()->format_->beginScan(string(""), &(t.splits()), nullptr,
-                                      nullptr, nullptr, false);
+        std::unique_ptr<dbcommon::FileInfo> info = fs->getFileInfo(path.c_str());
+        int64_t len = info->size;
+        int64_t start = 0;
+        file_splits_.reset(new univplan::UnivPlanScanFileSplitList());
+        univplan::UnivPlanScanFileSplit* file_split = file_splits_->Add();
+        file_split->set_filename(fullFileName.c_str());
+        file_split->set_start(start);
+        file_split->set_len(len);
+        dbcommon::TupleDesc desc;
+        dataset()->format_->beginScan(file_splits_.get(), &desc, nullptr, nullptr,
+                                      false);
         return Status::OK();
       }
 
       // Resets all reader streams.
       void ResetStreamsLocked() EXCLUSIVE_LOCKS_REQUIRED(mu_) {
         dataset()->format_->endScan();
-        tasks_.reset();
+        file_splits_.reset();
         result_.reset();
-      }
-
-      Status orcStringEncode(uint64_t rowId, string* value)
-          EXCLUSIVE_LOCKS_REQUIRED(mu_) {
-        if (result_ != nullptr) {
-          const dbcommon::TupleBatchReader& reader =
-              result_->getTupleBatchReader();
-          if (rowId >= result_->getNumOfRows()) {
-            return errors::OutOfRange("file to end.");
-          }
-          uint64_t colCount = result_->getNumOfColumns();
-          core::PutFixed64(value, colCount);
-          for (uint64_t i = 0; i < colCount; i++) {
-            auto kind = reader[i]->getTypeKind();
-            switch (kind) {
-                // integer
-              case dbcommon::BOOLEANID:
-                core::PutFixed32(value, DT_BOOL);
-                break;
-              case dbcommon::TINYINTID:
-                core::PutFixed32(value, DT_INT8);
-                break;
-              case dbcommon::SMALLINTID:
-                core::PutFixed32(value, DT_INT16);
-                break;
-              case dbcommon::INTID:
-                core::PutFixed32(value, DT_INT32);
-                break;
-              case dbcommon::BIGINTID:
-                core::PutFixed32(value, DT_INT64);
-                break;
-                // float
-              case dbcommon::FLOATID:
-                core::PutFixed32(value, DT_FLOAT);
-                break;
-              case dbcommon::DOUBLEID:
-                core::PutFixed32(value, DT_DOUBLE);
-                break;
-                // date
-              case dbcommon::DATEID:
-                core::PutFixed32(value, DT_INT32);
-                break;
-              case dbcommon::TIMESTAMPID:
-              case dbcommon::TIMEID:
-                core::PutFixed32(value, DT_INT64);
-                break;
-                // string
-              case dbcommon::STRINGID:
-                core::PutFixed32(value, DT_STRING);
-                break;
-              case dbcommon::VARCHARID:
-                core::PutFixed32(value, DT_STRING);
-                break;
-              case dbcommon::CHARID:
-                core::PutFixed32(value, DT_STRING);
-                break;
-
-              default:
-                core::PutFixed32(value, -1);
-                std::cout << "Can not encode " << kind << " type!" << std::endl;
-                continue;
-            }
-
-            uint64_t len;
-            bool isNull;
-            if (kind == dbcommon::TIMESTAMPID) {
-              len = sizeof(int64_t);
-              const char* data =
-                  static_cast<dbcommon::TimestampVector*>(reader[i].get())
-                      ->readValue(rowId, &isNull);
-              core::PutFixed64(value, len);
-              value->append(data, len);
-            } else {
-              const char* data = reader[i]->read(rowId, &len, &isNull);
-              core::PutFixed64(value, len);
-              value->append(data, len);
-            }
-          }
-        }
-        return Status::OK();
       }
 
       void AddInt64Feature(Features* features, string key, int64_t value)
@@ -1133,7 +1055,7 @@ class ORCFileDatasetOp : public DatasetOpKernel {
       // `reader_` will borrow the object that `file_` points to, so
       // we must destroy `reader_` before `file_`.
       dbcommon::TupleBatch::uptr result_ GUARDED_BY(mu_);
-      std::unique_ptr<univplan::UnivPlanScanTaskList> tasks_ GUARDED_BY(mu_);
+      std::unique_ptr<univplan::UnivPlanScanFileSplitList> file_splits_ GUARDED_BY(mu_);
       std::vector<uint64> offset_ GUARDED_BY(mu_);
       dbcommon::FileSystemManager FSManager_ GUARDED_BY(mu_);
     };
@@ -1149,6 +1071,441 @@ class ORCFileDatasetOp : public DatasetOpKernel {
 REGISTER_KERNEL_BUILDER(Name("ORCFileDataset").Device(DEVICE_CPU),
                         ORCFileDatasetOp);
 
+class OmniFileDatasetOp : public DatasetOpKernel {
+ public:
+  using DatasetOpKernel::DatasetOpKernel;
+
+  void MakeDataset(OpKernelContext* ctx, DatasetBase** output) override {
+    const Tensor* filenames_tensor;
+    OP_REQUIRES_OK(ctx, ctx->input("filenames", &filenames_tensor));
+    OP_REQUIRES(
+        ctx, filenames_tensor->dims() <= 1,
+        errors::InvalidArgument("`filenames` must be a scalar or a vector."));
+
+    std::vector<string> filenames;
+    filenames.reserve(filenames_tensor->NumElements());
+    for (int i = 0; i < filenames_tensor->NumElements(); ++i) {
+      filenames.push_back(filenames_tensor->flat<string>()(i));
+    }
+
+    int64 data_format_type = 1;
+    OP_REQUIRES_OK(ctx, ParseScalarArgument<int64>(ctx, "data_format_type",
+                                                   &data_format_type));
+    OP_REQUIRES(
+        ctx, data_format_type == 1,
+        errors::InvalidArgument("data_format_type only support orc(1) yet",
+                                data_format_type));
+    
+    string compression_type = "snappy";
+    OP_REQUIRES_OK(ctx, ParseScalarArgument<string>(ctx, "compression_type",
+                                                    &compression_type));
+
+    int64 block_count = 1;
+    OP_REQUIRES_OK(
+        ctx, ParseScalarArgument<int64>(ctx, "block_count", &block_count));
+    OP_REQUIRES(ctx, block_count >= 1,
+                errors::InvalidArgument("block_count must be >=1 not",
+                                        data_format_type));
+
+    int64 block_index = 0;
+    OP_REQUIRES_OK(
+        ctx, ParseScalarArgument<int64>(ctx, "block_index", &block_index));
+    OP_REQUIRES(
+        ctx, block_index >= 0 && block_index < block_count,
+        errors::InvalidArgument("block_index must be >=0 and < block_count not",
+                                block_index));
+
+    *output = new Dataset(ctx, std::move(filenames), data_format_type,
+                          compression_type, block_count, block_index);
+  }
+
+ private:
+  class Dataset : public GraphDatasetBase {
+   public:
+    explicit Dataset(OpKernelContext* ctx, std::vector<string> filenames,
+                     int data_format_type,
+                     const string& compression_type, int block_count,
+                     int block_index)
+        : GraphDatasetBase(ctx),
+          filenames_(std::move(filenames)),
+          data_format_type_(data_format_type),
+          compression_type_(compression_type),
+          block_count_(block_count),
+          block_index_(block_index) {
+      params_.set("number.tuples.per.batch", std::to_string(batch_size_));
+      params_.set("table.options", "{\"compresstype\":\"" + compression_type_ +
+                                       "\",\"rlecoder\":\"v2\","
+                                       "\"bloomfilter\":\"0\"}");
+      univplan::UNIVPLANFORMATTYPE format_tpye;
+      switch (data_format_type) {
+        case 1:
+          format_tpye = univplan::UNIVPLANFORMATTYPE::ORC_FORMAT;
+          break;
+      }
+      format_ = storage::Format::createFormat(format_tpye, &params_);
+    }
+
+    std::unique_ptr<IteratorBase> MakeIterator(
+        const string& prefix) const override {
+      return std::unique_ptr<IteratorBase>(
+          new Iterator({this, strings::StrCat(prefix, "::OmniFile")}));
+    }
+
+    const DataTypeVector& output_dtypes() const override {
+      static DataTypeVector* dtypes = new DataTypeVector({DT_STRING});
+      return *dtypes;
+    }
+
+    const std::vector<PartialTensorShape>& output_shapes() const override {
+      static std::vector<PartialTensorShape>* shapes =
+          new std::vector<PartialTensorShape>({{}});
+      return *shapes;
+    }
+
+    string DebugString() override { return "OmniFileDatasetOp::Dataset"; }
+
+   protected:
+    Status AsGraphDefInternal(DatasetGraphDefBuilder* b,
+                              Node** output) const override {
+      Node* filenames = nullptr;
+      TF_RETURN_IF_ERROR(b->AddVector(filenames_, &filenames));
+      Node* data_format_type = nullptr;
+      TF_RETURN_IF_ERROR(b->AddScalar(data_format_type_, &data_format_type));
+      Node* compression_type = nullptr;
+      TF_RETURN_IF_ERROR(b->AddScalar(compression_type_, &compression_type));
+      Node* block_count = nullptr;
+      TF_RETURN_IF_ERROR(b->AddScalar(block_count_, &block_count));
+      Node* block_index = nullptr;
+      TF_RETURN_IF_ERROR(b->AddScalar(block_index_, &block_index));
+      TF_RETURN_IF_ERROR(
+          b->AddDataset(this, {filenames, data_format_type, compression_type, block_count, block_index}, output));
+      return Status::OK();
+    }
+
+   private:
+    class Iterator : public DatasetIterator<Dataset> {
+     public:
+      explicit Iterator(const Params& params)
+          : DatasetIterator<Dataset>(params) {
+        dataset()->format_->setFileSystemManager(&FSManager_);
+        offset_.reserve(dataset()->filenames_.size());
+        for (size_t i = 0; i < dataset()->filenames_.size(); ++i) {
+          offset_.push_back(0);
+        }
+      }
+
+      Status GetNextInternal(IteratorContext* ctx,
+                             std::vector<Tensor>* out_tensors,
+                             bool* end_of_sequence) override {
+        mutex_lock l(mu_);
+        do {
+          // We are currently processing a file, so try to read the next record.
+          if (file_splits_) {
+            Tensor result_tensor(ctx->allocator({}), DT_STRING, {});
+            uint64 rowId =
+                offset_[current_file_index_] % dataset()->batch_size_;
+            if (rowId == 0) {
+              result_ = dataset()->format_->next();
+            }
+            if (result_ != nullptr) {
+              Status s =
+                  DataRowExample(rowId, &result_tensor.scalar<string>()());
+              if (s.ok()) {
+                offset_[current_file_index_]++;
+                out_tensors->emplace_back(std::move(result_tensor));
+                *end_of_sequence = false;
+                return Status::OK();
+              } else if (!errors::IsOutOfRange(s)) {
+                return s;
+              }
+            }
+
+            // We have reached the end of the current file, so maybe
+            // move on to next file.
+            ResetStreamsLocked();
+            ++current_file_index_;
+          }
+
+          // Iteration ends when there are no more files to process.
+          if (current_file_index_ == dataset()->filenames_.size()) {
+            *end_of_sequence = true;
+            return Status::OK();
+          }
+
+          TF_RETURN_IF_ERROR(SetupStreamsLocked(ctx->env()));
+        } while (true);
+      }
+
+     protected:
+      Status SaveInternal(IteratorStateWriter* writer) override {
+        mutex_lock l(mu_);
+        TF_RETURN_IF_ERROR(writer->WriteScalar(full_name("current_file_index"),
+                                               current_file_index_));
+        // write block count and index
+        TF_RETURN_IF_ERROR(writer->WriteScalar(full_name("block_count"),
+                                               dataset()->block_count_));
+        TF_RETURN_IF_ERROR(writer->WriteScalar(full_name("block_index"),
+                                               dataset()->block_index_));
+        if (file_splits_) {
+          TF_RETURN_IF_ERROR(writer->WriteScalar(full_name("offset"),
+                                                 offset_[current_file_index_]));
+        }
+        return Status::OK();
+      }
+
+      Status RestoreInternal(IteratorContext* ctx,
+                             IteratorStateReader* reader) override {
+        mutex_lock l(mu_);
+        ResetStreamsLocked();
+        int64 current_file_index;
+        TF_RETURN_IF_ERROR(reader->ReadScalar(full_name("current_file_index"),
+                                              &current_file_index));
+        current_file_index_ = size_t(current_file_index);
+        if (reader->Contains(full_name("offset"))) {
+          int64 offset;
+          TF_RETURN_IF_ERROR(reader->ReadScalar(full_name("offset"), &offset));
+          TF_RETURN_IF_ERROR(SetupStreamsLocked(ctx->env()));
+          offset_[current_file_index_] = offset;
+          auto batch_count = offset / dataset()->batch_size_;
+          for (size_t i = 0; i < batch_count; i++) {
+            dataset()->format_->next();
+          }
+        }
+        return Status::OK();
+      }
+
+     private:
+      // Sets up reader streams to read from the file at `current_file_index_`.
+      Status SetupStreamsLocked(Env* env) EXCLUSIVE_LOCKS_REQUIRED(mu_) {
+        if (current_file_index_ >= dataset()->filenames_.size()) {
+          return errors::InvalidArgument(
+              "current_file_index_:", current_file_index_,
+              " >= filenames_.size():", dataset()->filenames_.size());
+        }
+
+        // Actually move on to next file.
+        const string& next_filename =
+            dataset()->filenames_[current_file_index_];
+        offset_[current_file_index_] = 0;
+        string protocol, path;
+        getPathFromUrl(next_filename, protocol, path);
+        string fullFileName = protocol + path;
+        dbcommon::FileSystem* fs = FSManager_.get(fullFileName.c_str());
+        if (!fs->exists(path.c_str())) return errors::NotFound(path.c_str());
+
+        std::unique_ptr<dbcommon::FileInfo> info = fs->getFileInfo(path.c_str());
+        int64_t len = info->size / dataset()->block_count_;
+        int64_t start = dataset()->block_index_ * len;
+        if (dataset()->block_index_ == dataset()->block_count_ - 1) {
+          len = info->size - start;
+        }
+        file_splits_.reset(new univplan::UnivPlanScanFileSplitList());
+        univplan::UnivPlanScanFileSplit* file_split = file_splits_->Add();
+        file_split->set_filename(info->name.c_str());
+        file_split->set_start(start);
+        file_split->set_len(len);
+        dataset()->format_->beginScan(file_splits_.get(), nullptr, nullptr, nullptr,
+                                      false);
+        return Status::OK();
+      }
+
+      // Resets all reader streams.
+      void ResetStreamsLocked() EXCLUSIVE_LOCKS_REQUIRED(mu_) {
+        dataset()->format_->endScan();
+        file_splits_.reset();
+        result_.reset();
+      }
+
+      void AddInt64Feature(Features* features, string key, int64_t value)
+          EXCLUSIVE_LOCKS_REQUIRED(mu_) {
+        Feature feature;
+        feature.mutable_int64_list()->add_value(value);
+        auto map = features->mutable_feature();
+        (*map)[key] = feature;
+      }
+
+      void AddFloatFeature(Features* features, string key, float value)
+          EXCLUSIVE_LOCKS_REQUIRED(mu_) {
+        Feature feature;
+        feature.mutable_float_list()->add_value(value);
+        auto map = features->mutable_feature();
+        (*map)[key] = feature;
+      }
+
+      void AddBytesFeature(Features* features, string key, string value)
+          EXCLUSIVE_LOCKS_REQUIRED(mu_) {
+        Feature feature;
+        feature.mutable_bytes_list()->add_value(value);
+        auto map = features->mutable_feature();
+        (*map)[key] = feature;
+      }
+
+      Status DataRowExample(uint64_t rowId, string* value)
+          EXCLUSIVE_LOCKS_REQUIRED(mu_) {  // start function orcExample
+        if (result_ != nullptr) {          // start region if
+          const dbcommon::TupleBatchReader& reader =
+              result_->getTupleBatchReader();
+          if (rowId >= result_->getNumOfRows()) {
+            return errors::OutOfRange("file to end.");
+          }
+
+          Example example;
+          Features* features = example.mutable_features();
+          uint64_t colCount = result_->getNumOfColumns();
+          for (uint64_t i = 0; i < colCount; i++) {
+            auto kind = reader[i]->getTypeKind();
+            uint64_t len;
+            bool isNull;
+            switch (kind) {
+                // integer
+              case dbcommon::BOOLEANID: {
+                bool data;
+                const char* databuf = reader[i]->read(rowId, &len, &isNull);
+                memcpy(&data, databuf, sizeof(bool));
+                string key = strings::StrCat("key", i);
+                AddInt64Feature(features, key, static_cast<int64_t>(data));
+                break;
+              }
+              case dbcommon::TINYINTID: {
+                int8_t data;
+                const char* databuf = reader[i]->read(rowId, &len, &isNull);
+                memcpy(&data, databuf, sizeof(int8_t));
+                string key = strings::StrCat("key", i);
+                AddInt64Feature(features, key, static_cast<int64_t>(data));
+                break;
+              }
+              case dbcommon::SMALLINTID: {
+                int16_t data;
+                const char* databuf = reader[i]->read(rowId, &len, &isNull);
+                memcpy(&data, databuf, sizeof(int16_t));
+                string key = strings::StrCat("key", i);
+                AddInt64Feature(features, key, static_cast<int64_t>(data));
+                break;
+              }
+              case dbcommon::INTID: {
+                int32_t data;
+                const char* databuf = reader[i]->read(rowId, &len, &isNull);
+                memcpy(&data, databuf, sizeof(int32_t));
+                string key = strings::StrCat("key", i);
+                AddInt64Feature(features, key, static_cast<int64_t>(data));
+                break;
+              }
+              case dbcommon::BIGINTID: {
+                int64_t data;
+                const char* databuf = reader[i]->read(rowId, &len, &isNull);
+                memcpy(&data, databuf, sizeof(int64_t));
+                string key = strings::StrCat("key", i);
+                AddInt64Feature(features, key, data);
+                break;
+              }
+              case dbcommon::DATEID: {
+                int32_t data;
+                const char* databuf = reader[i]->read(rowId, &len, &isNull);
+                memcpy(&data, databuf, sizeof(int32_t));
+                string key = strings::StrCat("key", i);
+                AddInt64Feature(features, key, static_cast<int64_t>(data));
+                break;
+              }
+              case dbcommon::TIMESTAMPID: {
+                int64_t data;
+                const char* databuf =
+                    static_cast<dbcommon::TimestampVector*>(reader[i].get())
+                        ->readValue(rowId, &isNull);
+                memcpy(&data, databuf, sizeof(int64_t));
+                string key = strings::StrCat("key", i);
+                AddInt64Feature(features, key, data);
+                break;
+              }
+              case dbcommon::TIMEID: {
+                int64_t data;
+                const char* databuf = reader[i]->read(rowId, &len, &isNull);
+                memcpy(&data, databuf, sizeof(int64_t));
+                string key = strings::StrCat("key", i);
+                AddInt64Feature(features, key, data);
+                break;
+              }
+                // float
+              case dbcommon::FLOATID: {
+                float data;
+                const char* databuf = reader[i]->read(rowId, &len, &isNull);
+                memcpy(&data, databuf, sizeof(float));
+                string key = strings::StrCat("key", i);
+                AddFloatFeature(features, key, data);
+                break;
+              }
+              case dbcommon::DOUBLEID: {
+                double data;
+                const char* databuf = reader[i]->read(rowId, &len, &isNull);
+                memcpy(&data, databuf, sizeof(double));
+                string key = strings::StrCat("key", i);
+                AddFloatFeature(features, key, static_cast<float>(data));
+                break;
+              }
+                // string
+              case dbcommon::STRINGID:
+              case dbcommon::VARCHARID:
+              case dbcommon::CHARID: {
+                const char* databuf = reader[i]->read(rowId, &len, &isNull);
+                string key = strings::StrCat("key", i);
+                string value;
+                value.append(databuf, len);
+                AddBytesFeature(features, key, value);
+                break;
+              }
+
+              default:
+                std::cout << "Can not encode type!" << std::endl;
+                continue;
+            }
+          }
+          *value = example.SerializeAsString();
+          return Status::OK();
+        }  // end region if
+      }    // end function DataRowExample
+
+      void getPathFromUrl(const string& url, string& protocol, string& path)
+          EXCLUSIVE_LOCKS_REQUIRED(mu_) {
+        string protocolEnd = "://";
+        int pos = url.find(protocolEnd);
+        if (pos < 0) {  // local file system
+          protocol = "file://";
+          path = url;
+        } else {  // url
+          protocol = url.substr(0, pos + protocolEnd.size());
+          if (protocol == "file://") {
+            path = url.substr(pos + protocolEnd.size() - 1, url.size() - pos);
+          } else {
+            pos = url.find('/', pos + protocolEnd.size());
+            protocol = url.substr(0, pos);
+            path = url.substr(pos, url.size() - pos);
+          }
+        }
+      }
+
+      mutex mu_;
+      size_t current_file_index_ GUARDED_BY(mu_) = 0;
+
+      // `reader_` will borrow the object that `file_` points to, so
+      // we must destroy `reader_` before `file_`.
+      dbcommon::TupleBatch::uptr result_ GUARDED_BY(mu_);
+      std::unique_ptr<univplan::UnivPlanScanFileSplitList> file_splits_ GUARDED_BY(mu_);
+      std::vector<uint64> offset_ GUARDED_BY(mu_);
+      dbcommon::FileSystemManager FSManager_ GUARDED_BY(mu_);
+    };
+
+    const std::vector<string> filenames_;
+    const string compression_type_;
+    int data_format_type_;
+    const int batch_size_ = 64;
+    int64 block_count_ = 1;
+    int64 block_index_ = 0;
+    dbcommon::Parameters params_;
+    std::unique_ptr<storage::Format> format_;
+  };
+};
+
+REGISTER_KERNEL_BUILDER(Name("OmniFileDataset").Device(DEVICE_CPU),
+                        OmniFileDatasetOp);
 }  // namespace
 
 }  // namespace tensorflow

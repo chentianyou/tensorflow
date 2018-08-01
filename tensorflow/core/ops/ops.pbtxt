@@ -7363,41 +7363,6 @@ op {
   }
 }
 op {
-  name: "DecodeORC"
-  input_arg {
-    name: "records"
-    type: DT_STRING
-  }
-  output_arg {
-    name: "output"
-    type_list_attr: "OUT_TYPE"
-  }
-  attr {
-    name: "compression_type"
-    type: "string"
-    default_value {
-      s: "snappy"
-    }
-  }
-  attr {
-    name: "OUT_TYPE"
-    type: "list(type)"
-    has_minimum: false
-    allowed_values {
-      list {
-        type: DT_FLOAT
-        type: DT_DOUBLE
-        type: DT_INT8
-        type: DT_INT16
-        type: DT_BOOL
-        type: DT_INT32
-        type: DT_INT64
-        type: DT_STRING
-      }
-    }
-  }
-}
-op {
   name: "DecodeCompressed"
   input_arg {
     name: "bytes"
@@ -32181,6 +32146,34 @@ op {
   input_arg {
     name: "filenames"
     type: DT_STRING
+  }
+  input_arg {
+    name: "compression_type"
+    type: DT_STRING
+  }
+  output_arg {
+    name: "handle"
+    type: DT_VARIANT
+  }
+  is_stateful: true
+}
+op {
+  name: "OmniFileDataset"
+  input_arg {
+    name: "filenames"
+    type: DT_STRING
+  }
+  input_arg {
+    name: "block_count"
+    type: DT_INT64
+  }
+  input_arg {
+    name: "block_index"
+    type: DT_INT64
+  }
+  input_arg {
+    name: "data_format_type"
+    type: DT_INT64
   }
   input_arg {
     name: "compression_type"

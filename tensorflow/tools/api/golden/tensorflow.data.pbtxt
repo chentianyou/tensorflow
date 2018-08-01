@@ -20,8 +20,12 @@ tf_module {
     name: "TextLineDataset"
     mtype: "<class \'abc.ABCMeta\'>"
   }
-    member {
+  member {
     name: "ORCFileDataset"
+    mtype: "<class \'abc.ABCMeta\'>"
+  }
+  member {
+    name: "OmniFileDataset"
     mtype: "<class \'abc.ABCMeta\'>"
   }
 }

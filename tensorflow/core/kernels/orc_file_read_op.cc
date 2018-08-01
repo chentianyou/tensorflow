@@ -52,15 +52,16 @@ class OrcRowReader : public ReaderBase {
     dbcommon::FileSystem* fs = FSManager_.get(fullFileName.c_str());
     if (!fs->exists(path.c_str())) return errors::NotFound(path.c_str());
 
-    std::vector<storage::Input::uptr> files;
-    dbcommon::FileInfo::uptr info = fs->getFileInfo(path.c_str());
-    storage::Input::uptr file(
-        new storage::FileInput(fullFileName.c_str(), info->size));
-    files.push_back(std::move(file));
-    tasks_ = format_->createTasks(files, 1);
-    const univplan::UnivPlanScanTask& t = tasks_->Get(0);
-    format_->beginScan(string(""), &(t.splits()), nullptr, nullptr, nullptr,
-                       false);
+    std::unique_ptr<dbcommon::FileInfo> info = fs->getFileInfo(path.c_str());
+    int64_t len = info->size;
+    int64_t start = 0;
+    file_splits_.reset(new univplan::UnivPlanScanFileSplitList());
+    univplan::UnivPlanScanFileSplit* file_split = file_splits_->Add();
+    file_split->set_filename(info->name.c_str());
+    file_split->set_start(start);
+    file_split->set_len(len);
+    format_->beginScan(file_splits_.get(), nullptr, nullptr, nullptr,
+                                  false);
     return Status::OK();
   }
 
@@ -68,7 +69,7 @@ class OrcRowReader : public ReaderBase {
     format_->endScan();
     format_.reset(nullptr);
     result_.reset(nullptr);
-    tasks_.reset(nullptr);
+    file_splits_.reset(nullptr);
     return Status::OK();
   }
 
@@ -102,7 +103,7 @@ class OrcRowReader : public ReaderBase {
     rowId_ = 0;
     format_.reset(nullptr);
     result_.reset(nullptr);
-    tasks_.reset(nullptr);
+    file_splits_.reset(nullptr);
     return ReaderBase::ResetLocked();
   }
 
@@ -116,81 +117,7 @@ class OrcRowReader : public ReaderBase {
   dbcommon::Parameters params_;
   dbcommon::TupleBatch::uptr result_;
   std::unique_ptr<storage::Format> format_;
-  std::unique_ptr<univplan::UnivPlanScanTaskList> tasks_;
-
-  void orcStringEncode(const dbcommon::TupleBatchReader& reader, uint64_t rowId,
-                       string* value) {
-    if (result_ != nullptr) {
-      uint64_t colCount = result_->getNumOfColumns();
-      core::PutFixed64(value, colCount);
-      for (uint64_t i = 0; i < colCount; i++) {
-        auto kind = reader[i]->getTypeKind();
-        switch (kind) {
-            // integer
-          case dbcommon::BOOLEANID:
-            core::PutFixed32(value, DT_BOOL);
-            break;
-          case dbcommon::TINYINTID:
-            core::PutFixed32(value, DT_INT8);
-            break;
-          case dbcommon::SMALLINTID:
-            core::PutFixed32(value, DT_INT16);
-            break;
-          case dbcommon::INTID:
-            core::PutFixed32(value, DT_INT32);
-            break;
-          case dbcommon::BIGINTID:
-            core::PutFixed32(value, DT_INT64);
-            break;
-            // float
-          case dbcommon::FLOATID:
-            core::PutFixed32(value, DT_FLOAT);
-            break;
-          case dbcommon::DOUBLEID:
-            core::PutFixed32(value, DT_DOUBLE);
-            break;
-            // date
-          case dbcommon::DATEID:
-            core::PutFixed32(value, DT_INT32);
-            break;
-          case dbcommon::TIMESTAMPID:
-          case dbcommon::TIMEID:
-            core::PutFixed32(value, DT_INT64);
-            break;
-            // string
-          case dbcommon::STRINGID:
-            core::PutFixed32(value, DT_STRING);
-            break;
-          case dbcommon::VARCHARID:
-            core::PutFixed32(value, DT_STRING);
-            break;
-          case dbcommon::CHARID:
-            core::PutFixed32(value, DT_STRING);
-            break;
-
-          default:
-            core::PutFixed32(value, -1);
-            std::cout << "Can not encode type!" << std::endl;
-            continue;
-        }
-
-        uint64_t len;
-        bool isNull;
-        if (kind == dbcommon::TIMESTAMPID) {
-          len = sizeof(int64_t);
-          const char* data =
-              static_cast<dbcommon::TimestampVector*>(reader[i].get())
-                  ->readValue(rowId, &isNull);
-          core::PutFixed64(value, len);
-          value->append(data, len);
-        } else {
-          const char* data = reader[i]->read(rowId, &len, &isNull);
-          core::PutFixed64(value, len);
-          value->append(data, len);
-        }
-      }
-    }
-  }
+  std::unique_ptr<univplan::UnivPlanScanFileSplitList> file_splits_;
 
   void AddInt64Feature(Features* features, string key, int64_t value) {
     Feature feature;

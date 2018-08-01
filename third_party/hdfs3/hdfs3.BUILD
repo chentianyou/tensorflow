@@ -1,18 +1,18 @@
 # https://docs.bazel.build/versions/master/be/c-cpp.html#cc_library
 
-# load(
-#     "@org_tensorflow//tensorflow/core:platform/default/build_config.bzl",
-#     "tf_proto_library",
-#     "tf_proto_library_cc",
-# )
+load(
+    "@org_tensorflow//tensorflow/core:platform/default/build_config.bzl",
+    "tf_proto_library",
+    "tf_proto_library_cc",
+)
 
 cc_library(
     name = "hdfs3",
     srcs = glob([
         "src/**/*.cpp",
         "src/**/*.h",
-        "build/src/**/*.h",
-        "build/src/**/*.cc",
+        # "build/src/**/*.h",
+        # "build/src/**/*.cc",
     ]),
     hdrs = glob([
         "BlockLocation.h",
@@ -28,42 +28,48 @@ cc_library(
         "XmlConfig.h",
     ]),
     includes = [
+        "src/proto-tf",
         "src/common",
-        "src/proto",
+        "src/client",
         "build/src",
         "src",
     ],
     deps = [
-        # ":protos_all_cc",
-        "@protobuf_archive//:protobuf",
-        "@hornet_dep//:libxml2"
+        "@boringssl//:ssl",
+        ":protos_all_cc_impl",
+        "@hornet_dep//:libxml2",
+        "@hornet_dep//:gsasl",
+        "@curl//:curl"
+    ],
+    copts = [
+        "-Dprivate=public",
+        "-Dprotected=public",
     ],
     linkopts = [
         "-lpthread",
         "-lc++",
+        "-luuid",
+        "-lkrb5",
     ],
     visibility = ["//visibility:public"],
 )
 
-# HDFS_PROTO_SRCS=[
-#     "src/proto/ProtobufRpcEngine.proto",
-#     "src/proto/datatransfer.proto",
-#     "src/proto/RpcHeader.proto",
-#     "src/proto/IpcConnectionContext.proto",
-#     "src/proto/ClientNamenodeProtocol.proto",
-#     "src/proto/ClientDatanodeProtocol.proto",
-#     "src/proto/Security.proto",
-#     "src/proto/hdfs.proto",
-# ]
+HDFS_PROTO_SRCS=[
+    "src/proto-tf/ProtobufRpcEngine.proto",
+    "src/proto-tf/datatransfer.proto",
+    "src/proto-tf/RpcHeader.proto",
+    "src/proto-tf/IpcConnectionContext.proto",
+    "src/proto-tf/ClientNamenodeProtocol.proto",
+    "src/proto-tf/ClientDatanodeProtocol.proto",
+    "src/proto-tf/Security.proto",
+    "src/proto-tf/hdfs.proto",
+    "src/proto-tf/encryption.proto",
+]
 
-# tf_proto_library(
-#     name = "protos_all",
-#     srcs = HDFS_PROTO_SRCS,
-#     cc_api_version = 2,
-#     default_header = True,
-#     go_api_version = 2,
-#     j2objc_api_version = 1,
-#     java_api_version = 2,
-#     js_api_version = 2,
-#     visibility = ["//visibility:public"],
-# )
+tf_proto_library(
+    name = "protos_all",
+    srcs = HDFS_PROTO_SRCS,
+    cc_api_version = 2,
+    default_header = True,
+    visibility = ["//visibility:public"],
+)

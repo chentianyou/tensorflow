@@ -391,6 +391,20 @@ REGISTER_OP("ORCFileDataset")
                                                 // a scalar or a
                                                 // vector.
 
+REGISTER_OP("OmniFileDataset")
+    .Input("filenames: string")
+    .Input("block_count: int64")
+    .Input("block_index: int64")
+    .Input("data_format_type: int64")
+    .Input("compression_type: string")
+    .Output("handle: variant")
+    .SetIsStateful()  // TODO(b/65524810): Source dataset ops must be marked
+                      // stateful to inhibit constant folding.
+    .SetShapeFn(shape_inference::ScalarShape);  // TODO(mrry): validate
+                                                // that `filenames` is
+                                                // a scalar or a
+                                                // vector.
+
 REGISTER_OP("SqlDataset")
     .Input("driver_name: string")
     .Input("data_source_name: string")

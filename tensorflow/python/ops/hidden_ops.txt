@@ -218,7 +218,6 @@ WholeFileReaderV2
 OrcRowReaderV2
 LMDBReader
 DecodeCSV
-DecodeORC
 
 # linalg_ops
 BatchCholesky
