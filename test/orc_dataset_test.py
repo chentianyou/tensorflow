@@ -34,10 +34,11 @@ def orc_input_fn(files):
         features = dict([("key%d" % i, features["key%d" % i]) for i in range(8)])
         return features, labels
 
-    dataset = dataset.shuffle(buffer_size=10000)
+    # dataset = dataset.shuffle(buffer_size=10000)
     dataset = dataset.batch(batch_size=batch_size)
     dataset = dataset.repeat(num_epochs)
     dataset = dataset.map(orc_decode)
+    dataset = dataset.shard(100, 0)
 
     iterator = dataset.make_one_shot_iterator()
     features, labels = iterator.get_next()
