@@ -57,12 +57,12 @@ cp -r ${DEP_PKG}/include/thrift ${TF_DEP_PKG}/include/thrift
 cp -r ${DEP_PKG}/lib/libthrift.a ${TF_DEP_PKG}/lib
 
 echo "Copy hdfs3"
-cp -r ${DEP_ROOT}/libhdfs3 ${TF_DEP}/libhdfs3
+cp -r ~/libhdfs3 ${TF_DEP}/libhdfs3
 rm ${TF_DEP}/libhdfs3/build/src/*.pb.h
 rm ${TF_DEP}/libhdfs3/build/src/*.pb.cc
 
 echo "Get hornet"
-cp -r ${DEP_ROOT}/hornet ${TF_DEP}/hornet
+cp -r ~/hornet ${TF_DEP}/hornet
 find ${TF_DEP}/hornet -name "*.pb.*" | xargs rm -f
 echo "Done"
 

@@ -35,7 +35,7 @@ cc_library(
         "src",
     ],
     deps = [
-        "@boringssl//:ssl",
+        "@boringssl//:crypto",
         ":protos_all_cc_impl",
         "@hornet_dep//:libxml2",
         "@hornet_dep//:gsasl",

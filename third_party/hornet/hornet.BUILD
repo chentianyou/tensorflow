@@ -9,7 +9,6 @@ load(
 cc_library(
     name = "dbcommon",
     srcs = glob([
-        # "dbcommon/src/dbcommon/**/*.h",
         "dbcommon/src/dbcommon/**/*.cc",
         "dbcommon/build/codegen/src/**/*.cc",
         "dbcommon/build/codegen/src/**/*.cpp",
@@ -57,13 +56,11 @@ cc_library(
     ]),
     includes = [
         "univplan/src",
-        # "univplan/build/src",
     ],
     deps = [
         ":protos_plan_cc_impl",
         ":dbcommon",
     ],
-    # alwayslink=1,
     visibility = ["//visibility:public"],
 )
 
@@ -82,8 +79,6 @@ tf_proto_library(
 cc_library(
     name = "storage",
     srcs = glob([
-        # "storage/build/src/storage/**/*.h",
-        # "storage/build/src/storage/**/*.cc",
         "storage/src/storage/**/*.h",
         "storage/src/storage/**/*.cc",
     ]),
