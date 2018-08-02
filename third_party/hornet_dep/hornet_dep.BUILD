@@ -4,21 +4,21 @@ exports_files(["LICENSE"])
 # third_party
 ##############################
 
-#lz4
-cc_library(
-    name = "lz4",
-    srcs = glob([
-        "lib/liblz4.a",
-    ]),
-    hdrs = glob([
-        "include/lz4.h",
-        "include/lz4frame.h",
-        "include/lz4frame_static.h",
-        "include/lz4hc.h",
-    ]),
-    includes = ["include"],
-    visibility = ["//visibility:public"],
-)
+# #lz4
+# cc_library(
+#     name = "lz4",
+#     srcs = glob([
+#         "lib/liblz4.a",
+#     ]),
+#     hdrs = glob([
+#         "include/lz4.h",
+#         "include/lz4frame.h",
+#         "include/lz4frame_static.h",
+#         "include/lz4hc.h",
+#     ]),
+#     includes = ["include"],
+#     visibility = ["//visibility:public"],
+# )
 
 #glog
 cc_library(
