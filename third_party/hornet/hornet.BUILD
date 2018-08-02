@@ -40,6 +40,7 @@ cc_library(
         "@hornet_dep//:iconv",
         "@hdfs3//:hdfs3",
         "@zlib_archive//:zlib",
+        "@snappy//:snappy",
     ],
     linkopts = [
         "-lpthread",

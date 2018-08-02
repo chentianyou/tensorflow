@@ -6,6 +6,11 @@ load(
     "tf_proto_library_cc",
 )
 
+load(
+    "@org_tensorflow//tensorflow:tensorflow.bzl",
+    "if_linux_x86_64",
+    "if_darwin",
+)
 cc_library(
     name = "hdfs3",
     srcs = glob([
@@ -44,13 +49,17 @@ cc_library(
     copts = [
         "-Dprivate=public",
         "-Dprotected=public",
-    ],
+    ], 
     linkopts = [
         "-lpthread",
         "-lc++",
-        "-luuid",
         "-lkrb5",
-    ],
+        "-lboost_thread",
+        "-lboost_chrono",
+        "-lboost_system",
+        "-lboost_atomic",
+        "-lboost_iostreams",
+    ] + if_linux_x86_64([ "-luuid"]),
     visibility = ["//visibility:public"],
 )
 

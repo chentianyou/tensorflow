@@ -101,7 +101,7 @@ case $1 in
     ;;
 esac
 
-bazel build --jobs=8 $parameter --verbose_failures $target
+bazel build --jobs=4 $parameter --verbose_failures $target
 
 if [ $? != 0 ];then
     exit 1
