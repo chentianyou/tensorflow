@@ -91,7 +91,7 @@ cc_library(
         ":dbcommon",
         ":orc_proto_cc_impl",
         "@hdfs3//:hdfs3",
-        "@hornet_dep//:lz4",
+        "@lz4//:lz4",
         "@hornet_dep//:glog",
         "@hornet_dep//:iconv",
         "@snappy//:snappy",
