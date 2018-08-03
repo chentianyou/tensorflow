@@ -16,7 +16,8 @@ cc_library(
     srcs = glob([
         "src/**/*.cpp",
         "src/**/*.h",
-    ]) + if_darwin([":platform_darwin"]) + if_linux_x86_64([":platform_linux"]),
+    ]) + if_darwin([":platform_darwin"]) 
+    + if_linux_x86_64([":platform_linux"]),
     hdrs = glob([
         "BlockLocation.h",
         "DirectoryIterator.h",
