@@ -58,8 +58,6 @@ cp -r ${DEP_PKG}/lib/libthrift.a ${TF_DEP_PKG}/lib
 
 echo "Copy hdfs3"
 cp -r ~/libhdfs3 ${TF_DEP}/libhdfs3
-rm ${TF_DEP}/libhdfs3/build/src/*.pb.h
-rm ${TF_DEP}/libhdfs3/build/src/*.pb.cc
 
 echo "Get hornet"
 cp -r ~/hornet ${TF_DEP}/hornet
