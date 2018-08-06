@@ -17,10 +17,19 @@ cc_library(
         ":gflags"
     ],
     includes = ["include"],
-    linkopts = [
-        "-lpthread",
-        "-lc++",
-    ],
+    visibility = ["//visibility:public"],
+)
+
+#gflags
+cc_library(
+    name = "gflags",
+    srcs = glob([
+        "lib/libgflags.a",
+    ]),
+    hdrs = glob([
+        "include/gflags/**",
+    ]),
+    includes = ["include"],
     visibility = ["//visibility:public"],
 )
 

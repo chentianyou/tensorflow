@@ -27,9 +27,6 @@ mkdir -p ${TF_DEP_PKG}/lib
 echo "Done"
 
 echo "Copy TF dependency"
-echo "Copy lz4"
-cp -r ${DEP_PKG}/include/lz4*.h ${TF_DEP_PKG}/include
-cp -r ${DEP_PKG}/lib/liblz4.a ${TF_DEP_PKG}/lib
 
 echo "Copy glog"
 cp -r ${DEP_PKG}/include/glog ${TF_DEP_PKG}/include/glog

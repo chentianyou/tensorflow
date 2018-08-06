@@ -6,6 +6,10 @@ load(
     "tf_proto_library_cc",
 )
 
+load("@org_tensorflow//third_party:hornet/hornet.bzl", "cogapp_gen", "cogapp_gen_prepare")
+
+cogapp_gen_prepare()
+
 cc_library(
     name = "dbcommon",
     srcs = glob([
@@ -120,4 +124,13 @@ tf_proto_library(
     cc_api_version = 2,
     default_header = True,
     visibility = ["//visibility:public"],
+)
+
+
+cogapp_gen(
+    name = "cogapp_gen_h",
+    srcs = [
+        "dbcommon/src/dbcommon/function/arith-cmp-func.h",
+        "dbcommon/src/dbcommon/function/typecast-func.h",
+    ],
 )
