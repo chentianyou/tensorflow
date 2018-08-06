@@ -6,17 +6,42 @@ load(
     "tf_proto_library_cc",
 )
 
-load("@org_tensorflow//third_party:hornet/hornet.bzl", "cogapp_gen", "cogapp_gen_prepare")
+load(
+    "@org_tensorflow//third_party:hornet/hornet.bzl", 
+    "cogapp_gen",
+    "cogapp_gen_prepare",
+    "thrift_gen")
 
 cogapp_gen_prepare()
+
+cogapp_gen(
+    name = "cogapp_gen_h",
+    srcs = [
+        "dbcommon/src/dbcommon/function/arith-cmp-func.h",
+        "dbcommon/src/dbcommon/function/typecast-func.h",
+        "dbcommon/src/dbcommon/function/func-kind.h",
+    ],
+)
+
+cogapp_gen(
+    name = "cogapp_gen_cc",
+    srcs = [
+        "dbcommon/src/dbcommon/function/arith-func.cc",
+        "dbcommon/src/dbcommon/function/cmp-func.cc",
+        "dbcommon/src/dbcommon/function/typecast-func.cc",
+        "dbcommon/src/dbcommon/function/func.cc",
+        "dbcommon/src/dbcommon/type/type-util.cc",
+    ]
+)
+
+thrift_gen(
+    name = "hive_thrift"
+)
 
 cc_library(
     name = "dbcommon",
     srcs = glob([
         "dbcommon/src/dbcommon/**/*.cc",
-        "dbcommon/build/codegen/src/**/*.cc",
-        "dbcommon/build/codegen/src/**/*.cpp",
-        "dbcommon/build/codegen/src/**/*.h",
         ],
         exclude=[
             "dbcommon/src/dbcommon/function/typecast-func.cc",
@@ -24,10 +49,11 @@ cc_library(
             "dbcommon/src/dbcommon/function/typecast-func.h",
             "dbcommon/src/dbcommon/function/func.h",
             "dbcommon/src/dbcommon/type/type-util.cc",
-            "dbcommon/build/codegen/src/ThriftHiveMetastore_server.skeleton.cpp",
-            "dbcommon/build/codegen/src/FacebookService_server.skeleton.cpp",
         ],
-    ),
+    ) + [
+        ":cogapp_gen_h", 
+        ":cogapp_gen_cc",
+        ":hive_thrift"],
     hdrs = glob([
         "dbcommon/src/dbcommon/**/*.h",
         "dbcommon/build/codegen/src/**/*.h",
@@ -36,7 +62,7 @@ cc_library(
         "hdfs",
         "thrift",
         "dbcommon/src",
-        "dbcommon/build/codegen/src",
+        "dbcommon/src/dbcommon/filesystem/hive"
     ],
     deps = [
         "@hornet_dep//:thrift",
@@ -126,11 +152,3 @@ tf_proto_library(
     visibility = ["//visibility:public"],
 )
 
-
-cogapp_gen(
-    name = "cogapp_gen_h",
-    srcs = [
-        "dbcommon/src/dbcommon/function/arith-cmp-func.h",
-        "dbcommon/src/dbcommon/function/typecast-func.h",
-    ],
-)
