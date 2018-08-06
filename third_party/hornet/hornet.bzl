@@ -62,14 +62,12 @@ _cogapp_gen = rule(
 def cogapp_gen(
     name,
     srcs=[]):
-    print(srcs)
     outputs = []
     for f in srcs:
         if f.endswith(".h"):
             outputs.append(f[:-2] + ".cg.h")
         if f.endswith(".cc"):
             outputs.append(f[:-3] + ".cg.cc")
-    print(outputs)
     _cogapp_gen(
         name=name,
         srcs=srcs,
